@@ -4,36 +4,116 @@
 daml 1.2
 module DA.RefApps.SupplyChain.Main where
 
-type AssetId = ContractId Asset
+import DA.Date
 
-template Asset
+-- Relationships
+
+template BuyerSellerRelationshipInvitation
   with
-    issuer : Party
-    owner  : Party
-    name   : Text
+    buyer : Party
+    buyerAddress: Text
+    seller: Party
   where
-    ensure name /= ""
-    signatory issuer
-    controller owner can
-      Give : AssetId
-        with
-          newOwner : Party
+    signatory buyer
+    controller seller can
+      BuyerSellerRelationshipInvitation_Accept: ContractId BuyerSellerRelationship
         do
-          create this with
-            owner = newOwner
+          create $ BuyerSellerRelationship with ..
+
+template BuyerSellerRelationship
+  with
+    buyer : Party
+    buyerAddress: Text
+    seller: Party
+  where
+    signatory buyer, seller
+    controller buyer can
+      nonconsuming BuyerSellerRelationship_SendQuoteRequest: ContractId QuoteRequest
+        with
+          products: [OrderedProduct]
+        do
+          create $ QuoteRequest with ..
+
+-- Quote request
+
+data OrderedProduct =
+  OrderedProduct {
+    productName: Text;
+    quantity: Int;
+    deliveryFrom: Date;
+    deliveryTo: Date
+  } deriving (Eq, Show)
+
+template QuoteRequest
+  with
+    buyer: Party
+    buyerAddress: Text
+    seller  : Party
+    products: [OrderedProduct]
+  where
+    signatory buyer
+    controller seller can
+      QuoteRequest_AcceptAndSendToSupplier : ContractId QuoteRequestSupplyInvitation
+        with
+          supplier: Party
+        do
+          create QuoteRequestSupplyInvitation with supplier = supplier, ..
+
+template QuoteRequestSupplyInvitation
+  with
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    supplier: Party
+    products: [OrderedProduct]
+  where
+    signatory buyer, seller
+    controller supplier can
+      QuoteRequestSupplyInvitation_Accept : ContractId SupplyRequest
+        do
+          create SupplyRequest with ..
+
+template SupplyRequest
+  with
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    supplier: Party
+    products: [OrderedProduct]
+  where
+    signatory buyer, seller, supplier
 
 setup = scenario do
-  alice <- getParty "Alice"
-  bob <- getParty "Bob"
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
 
-  aliceTV <- submit alice do
-    create Asset with
-      issuer = alice
-      owner = alice
-      name = "TV"
+  -- Predefined data
+  let product01 = OrderedProduct "banana" 10 (date 2019 Dec 1) (date 2019 Dec 10)
+      product02 = OrderedProduct "orange" 10 (date 2019 Dec 10) (date 2019 Dec 14)
+      buyerAddress = "1234, Vice City, Arkham street 13"
 
-  bobTV <- submit alice do
-    exercise aliceTV Give with newOwner = bob
+  -- Market setup
+  buyerSellerRelInvitation <- submit buyer do
+    create $ BuyerSellerRelationshipInvitation buyer buyerAddress seller
+  buyerRole <- submit seller do
+    exercise buyerSellerRelInvitation BuyerSellerRelationshipInvitation_Accept
 
-  submit bob do
-    exercise bobTV Give with newOwner = alice
+  -- Sending quote request
+  [quoteReq1, _quoteReq2] <- submit buyer do
+    qr1 <- exercise buyerRole BuyerSellerRelationship_SendQuoteRequest with
+                        products = [product01]
+    qr2 <- exercise buyerRole BuyerSellerRelationship_SendQuoteRequest with
+                        products = [product02]
+    return [qr1, qr2]
+
+  -- Propagation of quote request towards supplier
+  acceptedQr <- submit seller do
+    exercise quoteReq1 QuoteRequest_AcceptAndSendToSupplier with
+                        supplier = supplier
+
+  -- Acceptance of invitation to supply the delivery
+  buyerSellerRelInvitation <- submit supplier do
+    exercise acceptedQr QuoteRequestSupplyInvitation_Accept
+
+  return ()
