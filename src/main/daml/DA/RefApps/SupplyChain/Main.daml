@@ -5,6 +5,7 @@ daml 1.2
 module DA.RefApps.SupplyChain.Main where
 
 import DA.Date
+import DA.List
 
 -- Relationships
 
@@ -67,11 +68,31 @@ template QuoteRequestSupplyInvitation
     supplier: Party
     products: [OrderedProduct]
   where
-    signatory buyer, seller
+    signatory seller
     controller supplier can
       QuoteRequestSupplyInvitation_Accept : ContractId SupplyRequest
         do
           create SupplyRequest with ..
+
+data WarehouseAllocation = WarehouseAllocation with
+    productName: Text
+    warehouse: Party
+    quantity: Int
+  deriving (Eq, Show)
+
+data TransportedWarehouseAllocation = TransportedWarehouseAllocation with
+    allocation: WarehouseAllocation
+    transportCompany: Party
+  deriving (Eq, Show)
+
+data PricedWarehouseAllocation = PricedWarehouseAllocation with
+    allocation: WarehouseAllocation
+    price: Int
+  deriving (Eq, Show)
+
+
+type ProductWithWarehouseWithQuantityWithTransportWithPrice = (Text, Party, Int, Party, Int)
+type ProductWithQuantity = (Text, Int)
 
 template SupplyRequest
   with
@@ -81,23 +102,484 @@ template SupplyRequest
     supplier: Party
     products: [OrderedProduct]
   where
-    signatory buyer, seller, supplier
+    signatory seller, supplier
+    controller supplier can
+      -- User chooses this option
+      SupplyRequest_LockProducts: ContractId InventoryLockingBotTrigger
+        with
+          whatToLock: [WarehouseAllocation]
+        do
+          create InventoryLockingBotTrigger with ..
+
+-- Inventory
+
+template InventoryItem
+  with
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    price: Int
+  where
+    signatory warehouse
+    observer supplier
+    controller supplier can
+      InventoryItem_SplitAndLock: (ContractId InventoryItem, ContractId LockedInventoryItem)
+        with
+          quantityToLock: Int
+        do
+          let remainingQuantity = quantity - quantityToLock
+          assertMsg "Non-positive remaining quantity." $ remainingQuantity > 0
+          this2 <- create InventoryItem with quantity = remainingQuantity, ..
+          locked <- create LockedInventoryItem with quantity = quantityToLock, ..
+          return (this2, locked)
+    -- TODO: Add split
+    -- TODO: Add lock
+
+template LockedInventoryItem
+  with
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    price: Int
+  where
+    signatory warehouse
+    observer supplier
+
+    controller warehouse can
+      LockedInventoryItem_PickUp: Optional (ContractId LockedInventoryItem)
+        with
+          quantityToPick: Int
+        do
+          assertMsg "To big quantity" $ quantityToPick <= quantity
+          if (quantityToPick == quantity) then return None
+          else Some <$> create LockedInventoryItem with
+            quantity = quantity - quantityToPick, ..
+
+-- Supplier
+
+template InventoryLockingBotTrigger
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    whatToLock: [WarehouseAllocation]
+  where
+    signatory supplier
+    controller supplier can
+      WarehouseInvetoryLockingBotTrigger_Lock: (ContractId RequestDeliveryProposal, [ContractId LockedInventoryItem])
+        with
+          inventory : [ContractId InventoryItem]
+        do
+          let WarehouseAllocation _  _ quantity = head whatToLock --TODO lookup for product in whatToLock
+          lockResult <- forA inventory $ \invItem -> do
+                  exercise invItem $ InventoryItem_SplitAndLock with
+                                        quantityToLock = quantity
+          let (_, lockedInv) = unzip lockResult
+          proposal <- create RequestDeliveryProposal with
+                  items = whatToLock, ..
+          return (proposal, lockedInv)
+
+template RequestDeliveryProposal
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [WarehouseAllocation]
+  where
+    signatory supplier
+    controller supplier can
+      RequestDeliveryProposal_RequestTransportQuote: (ContractId TransportQuoteRequestPending, [ContractId TransportQuoteRequest])
+        with
+          transportCompanies: [Party]
+        do
+          qRequests <- forA transportCompanies \tC -> create TransportQuoteRequest with
+                                                  transportCompany = tC
+                                                  supplier = supplier
+                                                  items = items
+          pending <- create TransportQuoteRequestPending with ..
+          return (pending, qRequests)
+
+data TransportQuoteItem = TransportQuoteItem with
+    allocation: WarehouseAllocation
+    transportableQuantity: Int
+    unitPrice: Int
+  deriving (Eq, Show)
+
+template TransportQuoteRequest
+  with
+    transportCompany: Party
+    supplier: Party
+    items: [WarehouseAllocation]
+  where
+    signatory supplier
+    controller transportCompany can
+      TransportQuoteRequest_Accept: ContractId TransportQuote
+        with
+          quote: [TransportQuoteItem]
+        do
+          create TransportQuote with items = quote, ..
+
+template TransportQuoteRequestPending
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [WarehouseAllocation]
+  where
+    signatory supplier
+    controller supplier can
+      -- Supplier waits no more, bot collects available TransportQuote-s
+      TransportQuoteRequestPending_ChooseTransport: ContractId ChooseTransportBotTrigger
+        do
+          create ChooseTransportBotTrigger with ..
+
+template TransportQuote
+  with
+    transportCompany: Party
+    supplier: Party
+    items: [TransportQuoteItem]
+  where
+    signatory supplier, transportCompany
+
+template ChooseTransportBotTrigger
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [WarehouseAllocation]
+  where
+    signatory supplier
+    controller supplier can
+      ChooseTransportBotTrigger_Proceed: (ContractId AggregatedQuotePending, [ContractId TransportCapacityLockRequest])
+        with
+          quotes: [ContractId TransportQuote]
+        do
+          -- do the calculation here, which is the best transport quote?
+          let bestQuoteCid = head quotes
+          bestQuote <- fetch bestQuoteCid
+          lockReq <- create TransportCapacityLockRequest with
+                  transportCompany = bestQuote.transportCompany
+                  supplier = bestQuote.supplier
+                  item = head items -- fill out
+
+          let price = (head bestQuote.items).unitPrice --TODO: proper map
+          let deliveryItems = map (\(WarehouseAllocation p w q) -> (p, w, q, bestQuote.transportCompany, price)) items --TODO calculate prices based on quantity
+          aggregated <- create AggregatedQuotePending with
+                  items = deliveryItems, ..
+          return (aggregated, [lockReq])
+
+template TransportCapacityLockRequest
+  with
+    transportCompany: Party
+    supplier: Party
+    item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
+  where
+    signatory supplier
+    controller transportCompany can
+      TransportCapacityLockRequest_Accept: ContractId TransportCapacityLock
+        do
+          create TransportCapacityLock with ..
+
+template TransportCapacityLock
+  with
+    transportCompany: Party
+    supplier: Party
+    item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
+  where
+    signatory transportCompany
+    observer supplier
+
+template AggregatedQuotePending
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [ProductWithWarehouseWithQuantityWithTransportWithPrice]
+  where
+    signatory supplier
+
+    controller supplier can
+      AggregatedQuotePending_SendQuoteToSeller: ContractId AggregatedQuoteTrigger
+        with
+          --TODO check if this should be collected with bot. Also check if there is a need for manual "send quote to seller" step
+          transportCapacityLockCids: [ContractId TransportCapacityLock]
+        do
+          --TODO: check if locks correspond to items
+          let transportCapacityLockCid = head transportCapacityLockCids
+              deliveryItems = map (\(p, w, q, tc, _price) -> DeliveryPlanItem (TransportedWarehouseAllocation (WarehouseAllocation p w q) tc) transportCapacityLockCid) items
+              quoteItems = map (\(p, w, q, _tc, price) -> PricedWarehouseAllocation (WarehouseAllocation p w q) price) items --TODO: fix price (quantity * unitPrice)
+          deliveryPlanCid <- create DeliveryPlan with
+            items = deliveryItems, ..
+          create AggregatedQuoteTrigger with
+            items = quoteItems, ..
+
+template AggregatedQuoteTrigger
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [PricedWarehouseAllocation] -- TODO add Address!! down from TransportQuoteRequest
+    deliveryPlanCid: ContractId DeliveryPlan
+  where
+    signatory supplier
+
+    controller seller can
+      AggregatedQuoteTrigger_Execute: ContractId AggregatedQuote
+        do
+          create AggregatedQuote with ..
+
+
+template AggregatedQuote
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [PricedWarehouseAllocation] -- TODO add Address!! down from TransportQuoteRequest
+    deliveryPlanCid: ContractId DeliveryPlan
+  where
+    signatory seller
+    controller seller can
+      AggregatedQuote_AddMargin: ContractId Quote
+        with
+          margin: Int
+        do
+          let itemsWithMargin = items -- TODO Add price and margin
+          deliveryPlan <- fetch deliveryPlanCid
+          deliveryItems <- forA deliveryPlan.items (\item -> do
+              req <- create PaymentRequest with
+                price = (head itemsWithMargin).price, .. --FIXME
+              return DeliveryAndPaymentPlanItem with
+                allocation = item.allocation
+                transportCapacityLockCid = item.transportCapacityLockCid
+                paymentRequestCid = req
+            )
+          deliveryPlanCid <- create DeliveryAndPaymentPlan with
+            items = deliveryItems, ..
+          create Quote with
+                  items = itemsWithMargin, ..
+                  -- TODO Actual items on quote should be (Product - Price - Quantity) /not aggregated/
+
+
+data DeliveryPlanItem = DeliveryPlanItem with
+    allocation: TransportedWarehouseAllocation
+    transportCapacityLockCid: ContractId TransportCapacityLock
+  deriving (Eq, Show)
+
+template DeliveryPlan
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [DeliveryPlanItem]
+  where
+    signatory supplier
+    observer seller
+
+data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
+    allocation: TransportedWarehouseAllocation
+    transportCapacityLockCid: ContractId TransportCapacityLock
+    paymentRequestCid: ContractId PaymentRequest
+  deriving (Eq, Show)
+
+template DeliveryAndPaymentPlan
+  with
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [DeliveryAndPaymentPlanItem]
+  where
+    signatory seller
+
+    controller seller can
+      DeliveryPlan_Start: [ContractId DeliveryInstruction]
+        do
+          forA items (\item -> create DeliveryInstruction with
+              productName = item.allocation.allocation.productName
+              warehouse = item.allocation.allocation.warehouse
+              quantity = item.allocation.allocation.quantity
+              transportCompany = item.allocation.transportCompany
+              transportCapacityLockCid = item.transportCapacityLockCid
+              paymentRequestCid = item.paymentRequestCid, ..
+            )
+
+template Quote
+  with
+    seller: Party
+    buyer: Party
+    deliveryPlanCid: ContractId DeliveryAndPaymentPlan
+    items: [PricedWarehouseAllocation] -- TODO add Address!! down from TransportQuoteRequest
+    --TODO: do we need the grandtotal?
+  where
+    signatory seller
+    observer buyer
+
+    controller buyer can
+      Quote_Accept: ContractId QuoteAccepted
+        do
+          create QuoteAccepted with ..
+
+template QuoteAccepted
+  with
+    seller: Party
+    buyer: Party
+    deliveryPlanCid: ContractId DeliveryAndPaymentPlan
+  where
+    signatory seller
+
+    controller seller can
+      QuoteAccepted_StartDelivery: [ContractId DeliveryInstruction]
+        do
+          exercise deliveryPlanCid DeliveryPlan_Start
+
+template DeliveryInstruction
+  with
+    buyer: Party
+    seller: Party
+    productName: Text
+    warehouse: Party
+    quantity: Int
+    transportCompany: Party
+    transportCapacityLockCid: ContractId TransportCapacityLock
+    paymentRequestCid: ContractId PaymentRequest
+  where
+    signatory seller
+    observer transportCompany
+
+    controller transportCompany can
+      DeliveryInstruction_PickUp: ContractId PickUpRequest
+        do
+          --TODO: inventory lock
+          create PickUpRequest with ..
+
+template PickUpRequest
+  with
+    buyer: Party
+    seller: Party
+    productName: Text
+    warehouse: Party
+    quantity: Int
+    transportCompany: Party
+    transportCapacityLockCid: ContractId TransportCapacityLock
+    paymentRequestCid: ContractId PaymentRequest
+  where
+    signatory transportCompany
+    observer warehouse
+
+    controller warehouse can
+      PickUpRequest_Accept: ContractId Delivery
+        with lockedInventoryItemCid: ContractId LockedInventoryItem
+        do
+          lockedInventoryItem <- fetch lockedInventoryItemCid
+          assertMsg "aaa" $ lockedInventoryItem.productName == productName
+          assertMsg "bbb" $ lockedInventoryItem.quantity >= quantity
+          exercise lockedInventoryItemCid $ LockedInventoryItem_PickUp quantity
+          create Delivery with ..
+
+template PaymentRequest
+  with
+    buyer: Party
+    seller: Party
+    price: Int
+  where
+    signatory seller
+    observer buyer
+
+    controller buyer can
+      PaymentRequest_Pay: ()
+        do return ()
+
+template Delivery
+  with
+    buyer: Party
+    seller: Party
+    productName: Text
+    quantity: Int
+    warehouse: Party
+    transportCompany: Party
+    transportCapacityLockCid: ContractId TransportCapacityLock
+    paymentRequestCid: ContractId PaymentRequest
+  where
+    signatory warehouse, transportCompany
+    observer buyer
+
+    controller buyer can
+      Delivery_Pay: ContractId DeliveryAck
+        do
+          ack <- create DeliveryAck with ..
+          exercise paymentRequestCid PaymentRequest_Pay
+          return ack
+
+template DeliveryAck
+  with
+    buyer: Party
+    transportCompany: Party
+    transportCapacityLockCid: ContractId TransportCapacityLock
+  where
+    signatory buyer
+    observer transportCompany
+
+    controller transportCompany can
+      DeliveryAck_ReleaseCapacity: ()
+        do
+          archive transportCapacityLockCid
+
 
 setup = scenario do
   buyer <- getParty "Buyer"
   seller <- getParty "Seller"
   supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
 
   -- Predefined data
-  let product01 = OrderedProduct "banana" 10 (date 2019 Dec 1) (date 2019 Dec 10)
-      product02 = OrderedProduct "orange" 10 (date 2019 Dec 10) (date 2019 Dec 14)
-      buyerAddress = "1234, Vice City, Arkham street 13"
+  let
+    product01 = OrderedProduct "banana" 10 (date 2019 Dec 1) (date 2019 Dec 10)
+    product02 = OrderedProduct "orange" 10 (date 2019 Dec 10) (date 2019 Dec 14)
+    buyerAddress = "1234, Vice City, Arkham street 13"
 
   -- Market setup
   buyerSellerRelInvitation <- submit buyer do
     create $ BuyerSellerRelationshipInvitation buyer buyerAddress seller
   buyerRole <- submit seller do
     exercise buyerSellerRelInvitation BuyerSellerRelationshipInvitation_Accept
+
+  inventoryW1P1Cid <- submit warehouse1 do
+    create InventoryItem
+      with
+        warehouse = warehouse1
+        supplier = supplier
+        productName = product01.productName
+        quantity = 100
+        price = 55
+  inventoryW1P2Cid <- submit warehouse1 do
+    create InventoryItem
+      with
+        warehouse = warehouse1
+        supplier = supplier
+        productName = product02.productName
+        quantity = 100
+        price = 60
+
+  inventoryW2P1Cid <- submit warehouse2 do
+    create InventoryItem
+      with
+        warehouse = warehouse2
+        supplier = supplier
+        productName = product01.productName
+        quantity = 100
+        price = 58
+  inventoryW2P2Cid <- submit warehouse2 do
+    create InventoryItem
+      with
+        warehouse = warehouse2
+        supplier = supplier
+        productName = product02.productName
+        quantity = 100
+        price = 65
 
   -- Sending quote request
   [quoteReq1, _quoteReq2] <- submit buyer do
@@ -112,8 +594,73 @@ setup = scenario do
     exercise quoteReq1 QuoteRequest_AcceptAndSendToSupplier with
                         supplier = supplier
 
-  -- Acceptance of invitation to supply the delivery
-  buyerSellerRelInvitation <- submit supplier do
-    exercise acceptedQr QuoteRequestSupplyInvitation_Accept
+  -- Acceptance of invitation to supply the delivery, manual selection of product+warehouse+quantity for the quote
+  let
+    product1W1Allocation = WarehouseAllocation product01.productName warehouse1 8
+    product1W2Allocation = WarehouseAllocation product01.productName warehouse2 2
+  (reqDeliveryProposal, [locked1, locked2]) <-  submit supplier do
+    supplyRequest <-  exercise acceptedQr QuoteRequestSupplyInvitation_Accept
+    lockTriggerCid <- exercise supplyRequest $ SupplyRequest_LockProducts [product1W1Allocation, product1W2Allocation]
+    -- Here, supplier's BOT collects actual inventory item contracts from warehouses that need to be locked
+    exercise lockTriggerCid $ WarehouseInvetoryLockingBotTrigger_Lock [inventoryW1P1Cid, inventoryW2P1Cid]
+
+  -- Selection of transport companies, sending transport requests, asking for transport quotes
+  (tranQuoteReqPending, [transportQuoteReqest1, transportQuoteReqest2]) <- submit supplier do
+    exercise reqDeliveryProposal $ RequestDeliveryProposal_RequestTransportQuote [transportComp1, transportComp2]
+
+  -- Transport companies submit their transport quotes
+  let
+    transportQuoteItem1 = TransportQuoteItem product1W1Allocation 8 10
+    transportQuoteItem2 = TransportQuoteItem product1W2Allocation 2 15
+  transportQuote1 <- submit transportComp1 do
+    exercise transportQuoteReqest1 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2]
+
+  transportQuote2 <- submit transportComp2 do
+    exercise transportQuoteReqest2 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2] --FIXME: create different quote
+
+  -- After a manual signal (that means end of transport quote request period), supplier's BOT collects
+  -- all the available quotes sent in by transport companies and the best is chosen
+  (aggregatedQuotePending, [tranCapacityLockReq1]) <- submit supplier do
+    trigger <- exercise tranQuoteReqPending TransportQuoteRequestPending_ChooseTransport
+    exercise trigger $ ChooseTransportBotTrigger_Proceed [transportQuote1, transportQuote2]
+
+  -- Best quote's submitter transport company locks the capacity
+  tranCapacityLock1 <- submit transportComp1 do
+    exercise tranCapacityLockReq1 TransportCapacityLockRequest_Accept
+
+  -- Supplier sends the quote to seller (with the corresponding transport capacity lock)
+  aggregatedQuoteTrigger <- submit supplier do
+    exercise aggregatedQuotePending $ AggregatedQuotePending_SendQuoteToSeller [tranCapacityLock1]
+
+  -- This triggers seller's BOT that creates an aggregated quote containing prices without the margin, yet
+  -- This is for visibility purposes, in the next step, seller adds the margin (not visible for supplier)
+  quote <- submit seller do
+    aggregatedQuote <- exercise aggregatedQuoteTrigger AggregatedQuoteTrigger_Execute
+    exercise aggregatedQuote $ AggregatedQuote_AddMargin 1
+
+  -- Buyer accepts the quote
+  accepted <- submit buyer do
+    exercise quote Quote_Accept
+
+  -- Seller start the delivery process notifying all the participants of the process
+  [deliveryInstruction1, deliveryInstruction2] <- submit seller do
+    exercise accepted QuoteAccepted_StartDelivery
+
+  -- Transport company asks for pickup acknowledgement
+  pickUpReq <- submit transportComp1 do
+    exercise deliveryInstruction1 DeliveryInstruction_PickUp
+
+  -- TODO: Check whether it is good to send the delivery acknowledgement request to the buyer from the warehouse (instead of the transport company)
+  -- Warehouse acknowledges pickup then asks for buyer's delivery acknowledgement
+  delivery1 <- submit warehouse1 do
+    exercise pickUpReq $ PickUpRequest_Accept locked1
+
+  -- Buyer ackowledges delivery and pays
+  deliveryAck <- submit buyer do
+    exercise delivery1 Delivery_Pay
+
+  -- Transport company acknowledges delivery as well finishing it and releasing capacity
+  submit transportComp1 do
+    exercise deliveryAck DeliveryAck_ReleaseCapacity
 
   return ()
