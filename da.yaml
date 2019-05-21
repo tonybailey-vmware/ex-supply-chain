@@ -1,0 +1,14 @@
+project:
+  sdk-version: 0.12.17
+  name: ex-supply-chain
+  source: src/main/daml/DA/RefApps/SupplyChain/Scenarios.daml
+  scenario: DA.RefApps.SupplyChain.Scenarios:setup
+  parties:
+    - Buyer
+    - Seller
+    - Supplier
+    - Warehouse1
+    - Warehouse2
+    - TransportCompany1
+    - TransportCompany2
+  version: 1.0.0

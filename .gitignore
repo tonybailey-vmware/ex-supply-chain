@@ -1,0 +1,4 @@
+.navigator.conf
+*.log
+.package-database
+target

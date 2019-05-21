@@ -4,8 +4,8 @@
 daml 1.2
 module DA.RefApps.SupplyChain.Main where
 
-import DA.Date
 import DA.List
+import DA.Optional
 
 -- Relationships
 
@@ -133,8 +133,6 @@ template InventoryItem
           this2 <- create InventoryItem with quantity = remainingQuantity, ..
           locked <- create LockedInventoryItem with quantity = quantityToLock, ..
           return (this2, locked)
-    -- TODO: Add split
-    -- TODO: Add lock
 
 template LockedInventoryItem
   with
@@ -170,16 +168,19 @@ template InventoryLockingBotTrigger
     controller supplier can
       WarehouseInvetoryLockingBotTrigger_Lock: (ContractId RequestDeliveryProposal, [ContractId LockedInventoryItem])
         with
-          inventory : [ContractId InventoryItem]
+          inventoryCids : [ContractId InventoryItem]
         do
-          let WarehouseAllocation _  _ quantity = head whatToLock --TODO lookup for product in whatToLock
-          lockResult <- forA inventory $ \invItem -> do
-                  exercise invItem $ InventoryItem_SplitAndLock with
-                                        quantityToLock = quantity
-          let (_, lockedInv) = unzip lockResult
+          inventory <- forA inventoryCids fetch
+          let inventoryPair = zip inventoryCids inventory
+          lockResult <- forA whatToLock (\alloc -> do
+              let inventoryItem = fromSome $ find (\(cid, i) -> i.productName == alloc.productName && i.warehouse == alloc.warehouse) inventoryPair
+              exercise (fst inventoryItem) $ InventoryItem_SplitAndLock with
+                                                quantityToLock = alloc.quantity
+            )
+          let (_, lockedCids) = unzip lockResult
           proposal <- create RequestDeliveryProposal with
                   items = whatToLock, ..
-          return (proposal, lockedInv)
+          return (proposal, lockedCids)
 
 template RequestDeliveryProposal
   with
@@ -524,143 +525,3 @@ template DeliveryAck
       DeliveryAck_ReleaseCapacity: ()
         do
           archive transportCapacityLockCid
-
-
-setup = scenario do
-  buyer <- getParty "Buyer"
-  seller <- getParty "Seller"
-  supplier <- getParty "Supplier"
-  warehouse1 <- getParty "Warehouse1"
-  warehouse2 <- getParty "Warehouse2"
-  transportComp1 <- getParty "TransportCompany1"
-  transportComp2 <- getParty "TransportCompany2"
-
-  -- Predefined data
-  let
-    product01 = OrderedProduct "banana" 10 (date 2019 Dec 1) (date 2019 Dec 10)
-    product02 = OrderedProduct "orange" 10 (date 2019 Dec 10) (date 2019 Dec 14)
-    buyerAddress = "1234, Vice City, Arkham street 13"
-
-  -- Market setup
-  buyerSellerRelInvitation <- submit buyer do
-    create $ BuyerSellerRelationshipInvitation buyer buyerAddress seller
-  buyerRole <- submit seller do
-    exercise buyerSellerRelInvitation BuyerSellerRelationshipInvitation_Accept
-
-  inventoryW1P1Cid <- submit warehouse1 do
-    create InventoryItem
-      with
-        warehouse = warehouse1
-        supplier = supplier
-        productName = product01.productName
-        quantity = 100
-        price = 55
-  inventoryW1P2Cid <- submit warehouse1 do
-    create InventoryItem
-      with
-        warehouse = warehouse1
-        supplier = supplier
-        productName = product02.productName
-        quantity = 100
-        price = 60
-
-  inventoryW2P1Cid <- submit warehouse2 do
-    create InventoryItem
-      with
-        warehouse = warehouse2
-        supplier = supplier
-        productName = product01.productName
-        quantity = 100
-        price = 58
-  inventoryW2P2Cid <- submit warehouse2 do
-    create InventoryItem
-      with
-        warehouse = warehouse2
-        supplier = supplier
-        productName = product02.productName
-        quantity = 100
-        price = 65
-
-  -- Sending quote request
-  [quoteReq1, _quoteReq2] <- submit buyer do
-    qr1 <- exercise buyerRole BuyerSellerRelationship_SendQuoteRequest with
-                        products = [product01]
-    qr2 <- exercise buyerRole BuyerSellerRelationship_SendQuoteRequest with
-                        products = [product02]
-    return [qr1, qr2]
-
-  -- Propagation of quote request towards supplier
-  acceptedQr <- submit seller do
-    exercise quoteReq1 QuoteRequest_AcceptAndSendToSupplier with
-                        supplier = supplier
-
-  -- Acceptance of invitation to supply the delivery, manual selection of product+warehouse+quantity for the quote
-  let
-    product1W1Allocation = WarehouseAllocation product01.productName warehouse1 8
-    product1W2Allocation = WarehouseAllocation product01.productName warehouse2 2
-  (reqDeliveryProposal, [locked1, locked2]) <-  submit supplier do
-    supplyRequest <-  exercise acceptedQr QuoteRequestSupplyInvitation_Accept
-    lockTriggerCid <- exercise supplyRequest $ SupplyRequest_LockProducts [product1W1Allocation, product1W2Allocation]
-    -- Here, supplier's BOT collects actual inventory item contracts from warehouses that need to be locked
-    exercise lockTriggerCid $ WarehouseInvetoryLockingBotTrigger_Lock [inventoryW1P1Cid, inventoryW2P1Cid]
-
-  -- Selection of transport companies, sending transport requests, asking for transport quotes
-  (tranQuoteReqPending, [transportQuoteReqest1, transportQuoteReqest2]) <- submit supplier do
-    exercise reqDeliveryProposal $ RequestDeliveryProposal_RequestTransportQuote [transportComp1, transportComp2]
-
-  -- Transport companies submit their transport quotes
-  let
-    transportQuoteItem1 = TransportQuoteItem product1W1Allocation 8 10
-    transportQuoteItem2 = TransportQuoteItem product1W2Allocation 2 15
-  transportQuote1 <- submit transportComp1 do
-    exercise transportQuoteReqest1 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2]
-
-  transportQuote2 <- submit transportComp2 do
-    exercise transportQuoteReqest2 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2] --FIXME: create different quote
-
-  -- After a manual signal (that means end of transport quote request period), supplier's BOT collects
-  -- all the available quotes sent in by transport companies and the best is chosen
-  (aggregatedQuotePending, [tranCapacityLockReq1]) <- submit supplier do
-    trigger <- exercise tranQuoteReqPending TransportQuoteRequestPending_ChooseTransport
-    exercise trigger $ ChooseTransportBotTrigger_Proceed [transportQuote1, transportQuote2]
-
-  -- Best quote's submitter transport company locks the capacity
-  tranCapacityLock1 <- submit transportComp1 do
-    exercise tranCapacityLockReq1 TransportCapacityLockRequest_Accept
-
-  -- Supplier sends the quote to seller (with the corresponding transport capacity lock)
-  aggregatedQuoteTrigger <- submit supplier do
-    exercise aggregatedQuotePending $ AggregatedQuotePending_SendQuoteToSeller [tranCapacityLock1]
-
-  -- This triggers seller's BOT that creates an aggregated quote containing prices without the margin, yet
-  -- This is for visibility purposes, in the next step, seller adds the margin (not visible for supplier)
-  quote <- submit seller do
-    aggregatedQuote <- exercise aggregatedQuoteTrigger AggregatedQuoteTrigger_Execute
-    exercise aggregatedQuote $ AggregatedQuote_AddMargin 1
-
-  -- Buyer accepts the quote
-  accepted <- submit buyer do
-    exercise quote Quote_Accept
-
-  -- Seller start the delivery process notifying all the participants of the process
-  [deliveryInstruction1, deliveryInstruction2] <- submit seller do
-    exercise accepted QuoteAccepted_StartDelivery
-
-  -- Transport company asks for pickup acknowledgement
-  pickUpReq <- submit transportComp1 do
-    exercise deliveryInstruction1 DeliveryInstruction_PickUp
-
-  -- TODO: Check whether it is good to send the delivery acknowledgement request to the buyer from the warehouse (instead of the transport company)
-  -- Warehouse acknowledges pickup then asks for buyer's delivery acknowledgement
-  delivery1 <- submit warehouse1 do
-    exercise pickUpReq $ PickUpRequest_Accept locked1
-
-  -- Buyer ackowledges delivery and pays
-  deliveryAck <- submit buyer do
-    exercise delivery1 Delivery_Pay
-
-  -- Transport company acknowledges delivery as well finishing it and releasing capacity
-  submit transportComp1 do
-    exercise deliveryAck DeliveryAck_ReleaseCapacity
-
-  return ()

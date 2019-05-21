@@ -1,10 +1,15 @@
 sdk-version: 0.12.17
-name: a
-source: src/main/daml/DA/RefApps/SupplyChain/Main.daml
-scenario: Main:setup
+name: ex-supply-chain
+source: src/main/daml/DA/RefApps/SupplyChain/Scenarios.daml
+scenario: DA.RefApps.SupplyChain.Scenarios:setup
 parties:
-  - Alice
-  - Bob
+  - Buyer
+  - Seller
+  - Supplier
+  - Warehouse1
+  - Warehouse2
+  - TransportCompany1
+  - TransportCompany2
 version: 1.0.0
 exposed-modules:
   - Main
