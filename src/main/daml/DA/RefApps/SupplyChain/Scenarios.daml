@@ -46,7 +46,7 @@ setup = scenario do
         supplier = supplier
         productName = product01.productName
         quantity = 100
-        price = 55
+        unitPrice = 55.0
   inventoryW1P2Cid <- submit warehouse1 do
     create InventoryItem
       with
@@ -54,7 +54,7 @@ setup = scenario do
         supplier = supplier
         productName = product02.productName
         quantity = 100
-        price = 60
+        unitPrice = 60.0
 
   inventoryW2P1Cid <- submit warehouse2 do
     create InventoryItem
@@ -63,7 +63,7 @@ setup = scenario do
         supplier = supplier
         productName = product01.productName
         quantity = 100
-        price = 58
+        unitPrice = 58.0
   inventoryW2P2Cid <- submit warehouse2 do
     create InventoryItem
       with
@@ -71,7 +71,7 @@ setup = scenario do
         supplier = supplier
         productName = product02.productName
         quantity = 100
-        price = 65
+        unitPrice = 65.0
 
   return SetupData with
     buyerRoleCid = buyerRole, ..
@@ -96,7 +96,8 @@ fullScenario = scenario do
 
   -- Propagation of quote request towards supplier
   acceptedQr <- submit seller do
-    exercise quoteReq1 QuoteRequest_AcceptAndSendToSupplier with
+    accepted <- exercise quoteReq1 QuoteRequest_Accept
+    exercise accepted QuoteRequestAccepted_SendToSupplier with
                         supplier = supplier
 
   -- Acceptance of invitation to supply the delivery, manual selection of product+warehouse+quantity for the quote
@@ -115,13 +116,13 @@ fullScenario = scenario do
 
   -- Transport companies submit their transport quotes
   let
-    transportQuoteItem1 = TransportQuoteItem product1W1Allocation 8 10
-    transportQuoteItem2 = TransportQuoteItem product1W2Allocation 2 15
+    transportQuoteItem1 = TransportQuoteItem product1W1Allocation 8 10.0
+    transportQuoteItem2 = TransportQuoteItem product1W2Allocation 2 15.0
   transportQuote1 <- submit transportComp1 do
-    exercise transportQuoteReqest1 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2]
+    exercise transportQuoteReqest1 $ TransportQuoteRequest_Accept [(8, 10.0), (2, 15.0)]
 
   transportQuote2 <- submit transportComp2 do
-    exercise transportQuoteReqest2 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2] --FIXME: create different quote
+    exercise transportQuoteReqest2 $ TransportQuoteRequest_Accept [(8, 10.0), (2, 15.0)] --FIXME: create different quote
 
   -- After a manual signal (that means end of transport quote request period), supplier's BOT collects
   -- all the available quotes sent in by transport companies and the best is chosen

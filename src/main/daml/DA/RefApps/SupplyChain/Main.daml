@@ -54,7 +54,20 @@ template QuoteRequest
   where
     signatory buyer
     controller seller can
-      QuoteRequest_AcceptAndSendToSupplier : ContractId QuoteRequestSupplyInvitation
+      QuoteRequest_Accept: ContractId QuoteRequestAccepted
+        do
+          create QuoteRequestAccepted with ..
+
+template QuoteRequestAccepted
+  with
+    buyer: Party
+    buyerAddress: Text
+    seller  : Party
+    products: [OrderedProduct]
+  where
+    signatory seller
+    controller seller can
+      QuoteRequestAccepted_SendToSupplier : ContractId QuoteRequestSupplyInvitation
         with
           supplier: Party
         do
@@ -87,11 +100,11 @@ data TransportedWarehouseAllocation = TransportedWarehouseAllocation with
 
 data PricedWarehouseAllocation = PricedWarehouseAllocation with
     allocation: WarehouseAllocation
-    price: Int
+    price: Decimal
   deriving (Eq, Show)
 
 
-type ProductWithWarehouseWithQuantityWithTransportWithPrice = (Text, Party, Int, Party, Int)
+type ProductWithWarehouseWithQuantityWithTransportWithPrice = (Text, Party, Int, Party, Decimal)
 type ProductWithQuantity = (Text, Int)
 
 template SupplyRequest
@@ -119,7 +132,7 @@ template InventoryItem
     supplier: Party
     productName: Text
     quantity: Int
-    price: Int
+    unitPrice: Decimal
   where
     signatory warehouse
     observer supplier
@@ -140,7 +153,7 @@ template LockedInventoryItem
     supplier: Party
     productName: Text
     quantity: Int
-    price: Int
+    unitPrice: Decimal
   where
     signatory warehouse
     observer supplier
@@ -205,7 +218,7 @@ template RequestDeliveryProposal
 data TransportQuoteItem = TransportQuoteItem with
     allocation: WarehouseAllocation
     transportableQuantity: Int
-    unitPrice: Int
+    price: Decimal -- total price corresponding to transportableQuantity
   deriving (Eq, Show)
 
 template TransportQuoteRequest
@@ -218,8 +231,11 @@ template TransportQuoteRequest
     controller transportCompany can
       TransportQuoteRequest_Accept: ContractId TransportQuote
         with
-          quote: [TransportQuoteItem]
+          quantityAndPricePerItem: [(Int, Decimal)]
         do
+          assertMsg "All ordered items must have a corresponding quote item" $ (length items) == (length quantityAndPricePerItem)
+          let zipped = zip items quantityAndPricePerItem
+          let quote = map (\(alloc, (transportable, price)) -> TransportQuoteItem alloc transportable price) zipped
           create TransportQuote with items = quote, ..
 
 template TransportQuoteRequestPending
@@ -255,17 +271,17 @@ template ChooseTransportBotTrigger
     controller supplier can
       ChooseTransportBotTrigger_Proceed: (ContractId AggregatedQuotePending, [ContractId TransportCapacityLockRequest])
         with
-          quotes: [ContractId TransportQuote]
+          quoteCids: [ContractId TransportQuote]
         do
           -- do the calculation here, which is the best transport quote?
-          let bestQuoteCid = head quotes
+          let bestQuoteCid = head quoteCids
           bestQuote <- fetch bestQuoteCid
           lockReq <- create TransportCapacityLockRequest with
                   transportCompany = bestQuote.transportCompany
                   supplier = bestQuote.supplier
                   item = head items -- fill out
 
-          let price = (head bestQuote.items).unitPrice --TODO: proper map
+          let price = (head bestQuote.items).price --TODO: proper map
           let deliveryItems = map (\(WarehouseAllocation p w q) -> (p, w, q, bestQuote.transportCompany, price)) items --TODO calculate prices based on quantity
           aggregated <- create AggregatedQuotePending with
                   items = deliveryItems, ..
@@ -482,7 +498,7 @@ template PaymentRequest
   with
     buyer: Party
     seller: Party
-    price: Int
+    price: Decimal
   where
     signatory seller
     observer buyer
