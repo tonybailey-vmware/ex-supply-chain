@@ -6,6 +6,7 @@ module DA.RefApps.SupplyChain.Main where
 
 import DA.List
 import DA.Date
+import DA.Functor
 import DA.Optional
 
 -- Relationships
@@ -126,18 +127,34 @@ template SupplyRequest
     signatory seller, supplier
     controller supplier can
       -- User chooses this option
-      SupplyRequest_LockProducts: ContractId InventoryLockingBotTrigger
+      SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryReservationRequest], [ContractId TransportQuoteRequest])
         with
-          whatToLock: [WarehouseAllocation]
+          warehouses: [Party]
+          transportCompanies: [Party]
+          -- whatToLock: [WarehouseAllocation]
         do
-          allocWithDates <- forA whatToLock (\alloc -> do
-              let correspondingOrder = find (\o -> o.productName == alloc.productName) products
-              assertMsg ("Locked product was not ordered: " <> alloc.productName) $ isSome correspondingOrder
-              let order = fromSome correspondingOrder
-              return $ WarehouseAllocationWithDates alloc order.deliveryFrom order.deliveryTo
-            )
-          create InventoryLockingBotTrigger with
-            whatToLock = allocWithDates, ..
+          l <- fmap concat $ forA warehouses
+              (\w -> forA products
+                (\product ->
+                  create InventoryReservationRequest with
+                    warehouse = w, ..))
+          -- allocWithDates <- forA whatToLock (\alloc -> do
+          --     let correspondingOrder = find (\o -> o.productName == alloc.productName) products
+          --     assertMsg ("Locked product was not ordered: " <> alloc.productName) $ isSome correspondingOrder
+          --     let order = fromSome correspondingOrder
+          --     return $ WarehouseAllocationWithDates alloc order.deliveryFrom order.deliveryTo
+          --   )
+
+          -- create InventoryLockingBotTrigger with
+          --   whatToLock = allocWithDates, ..
+          let items = concat $
+                products <&>
+                  (\p -> warehouses <&>
+                    (\w -> WarehouseAllocationWithDates (WarehouseAllocation p.productName w p.quantity) p.deliveryFrom p.deliveryTo))
+
+          pending <- create TransportQuoteRequestPending with
+            items = items, ..
+          return (pending, l, [])
 
 -- Inventory
 
@@ -154,12 +171,13 @@ template InventoryItem
     controller supplier can
       InventoryItem_SplitAndLock: (ContractId InventoryItem, ContractId LockedInventoryItem)
         with
-          quantityToLock: Int
+          reservation: ContractId InventoryItemReservation
+          quantitiesToLock: [Int]
         do
-          let remainingQuantity = quantity - quantityToLock
+          let remainingQuantity = quantity - head quantitiesToLock -- TODO
           assertMsg "Non-positive remaining quantity." $ remainingQuantity > 0
           this2 <- create InventoryItem with quantity = remainingQuantity, ..
-          locked <- create LockedInventoryItem with quantity = quantityToLock, ..
+          locked <- create LockedInventoryItem with quantity = head quantitiesToLock, .. --TODO
           return (this2, locked)
 
 template LockedInventoryItem
@@ -173,62 +191,82 @@ template LockedInventoryItem
     signatory warehouse
     observer supplier
 
+template InventoryReservationRequest
+  with
+    warehouse: Party
+    supplier: Party
+    product: OrderedProduct
+  where
+    signatory supplier
+
     controller warehouse can
-      LockedInventoryItem_PickUp: Optional (ContractId LockedInventoryItem)
+      InventoryReservationRequest_Accept: ContractId InventoryItemReservation
         with
-          quantityToPick: Int
+          inventoryItemCid: ContractId InventoryItem
         do
-          assertMsg "To big quantity" $ quantityToPick <= quantity
-          if (quantityToPick == quantity) then return None
-          else Some <$> create LockedInventoryItem with
-            quantity = quantity - quantityToPick, ..
+          item <- fetch inventoryItemCid
+          let reservedQuantity = min item.quantity product.quantity
+          create InventoryItemReservation with
+            quantity = reservedQuantity
+            price = item.unitPrice * intToDecimal reservedQuantity
+            productName = product.productName, ..
+
+template InventoryItemReservation
+  with
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    price: Decimal
+  where
+    signatory warehouse
 
 -- Supplier
 
-template InventoryLockingBotTrigger
-  with
-    supplier: Party
-    buyer: Party
-    seller: Party
-    whatToLock: [WarehouseAllocationWithDates]
-  where
-    signatory supplier
-    controller supplier can
-      WarehouseInvetoryLockingBotTrigger_Lock: (ContractId RequestDeliveryProposal, [ContractId LockedInventoryItem])
-        with
-          inventoryCids : [ContractId InventoryItem]
-        do
-          inventory <- forA inventoryCids fetch
-          let inventoryPair = zip inventoryCids inventory
-          lockResult <- forA whatToLock (\alloc -> do
-              let inventoryItem = fromSome $ find (\(cid, i) -> i.productName == alloc.allocation.productName && i.warehouse == alloc.allocation.warehouse) inventoryPair
-              exercise (fst inventoryItem) $ InventoryItem_SplitAndLock with
-                                                quantityToLock = alloc.allocation.quantity
-            )
-          let (_, lockedCids) = unzip lockResult
-          proposal <- create RequestDeliveryProposal with
-                  items = whatToLock, ..
-          return (proposal, lockedCids)
+-- template InventoryLockingBotTrigger
+--   with
+--     supplier: Party
+--     buyer: Party
+--     seller: Party
+--     whatToLock: [WarehouseAllocationWithDates]
+--   where
+--     signatory supplier
+--     controller supplier can
+--       WarehouseInvetoryLockingBotTrigger_Lock: (ContractId RequestDeliveryProposal, [ContractId LockedInventoryItem])
+--         with
+--           inventoryCids : [ContractId InventoryItem]
+--         do
+--           inventory <- forA inventoryCids fetch
+--           let inventoryPair = zip inventoryCids inventory
+--           lockResult <- forA whatToLock (\alloc -> do
+--               let inventoryItem = fromSome $ find (\(cid, i) -> i.productName == alloc.allocation.productName && i.warehouse == alloc.allocation.warehouse) inventoryPair
+--               exercise (fst inventoryItem) $ InventoryItem_SplitAndLock with
+--                                                 quantityToLock = alloc.allocation.quantity
+--             )
+--           let (_, lockedCids) = unzip lockResult
+--           proposal <- create RequestDeliveryProposal with
+--                   items = whatToLock, ..
+--           return (proposal, lockedCids)
 
-template RequestDeliveryProposal
-  with
-    supplier: Party
-    buyer: Party
-    seller: Party
-    items: [WarehouseAllocationWithDates]
-  where
-    signatory supplier
-    controller supplier can
-      RequestDeliveryProposal_RequestTransportQuote: (ContractId TransportQuoteRequestPending, [ContractId TransportQuoteRequest])
-        with
-          transportCompanies: [Party]
-        do
-          qRequests <- forA transportCompanies \tC -> create TransportQuoteRequest with
-                                                  transportCompany = tC
-                                                  supplier = supplier
-                                                  items = items
-          pending <- create TransportQuoteRequestPending with ..
-          return (pending, qRequests)
+-- template RequestDeliveryProposal
+--   with
+--     supplier: Party
+--     buyer: Party
+--     seller: Party
+--     items: [WarehouseAllocationWithDates]
+--   where
+--     signatory supplier
+--     controller supplier can
+--       RequestDeliveryProposal_RequestTransportQuote: (ContractId TransportQuoteRequestPending, [ContractId TransportQuoteRequest])
+--         with
+--           transportCompanies: [Party]
+--         do
+--           qRequests <- forA transportCompanies \tC -> create TransportQuoteRequest with
+--                                                   transportCompany = tC
+--                                                   supplier = supplier
+--                                                   items = items
+--           pending <- create TransportQuoteRequestPending with ..
+--           return (pending, qRequests)
 
 data TransportQuoteItem = TransportQuoteItem with
     transportableQuantity: Int
@@ -240,6 +278,7 @@ template TransportQuoteRequest
   with
     transportCompany: Party
     supplier: Party
+    --TODO: buyerAddress: Text
     items: [WarehouseAllocationWithDates]
   where
     signatory supplier
@@ -259,6 +298,13 @@ template TransportQuote
     items: [(WarehouseAllocation, TransportQuoteItem)]
   where
     signatory supplier, transportCompany
+
+    controller supplier can
+      TransportQuote_Reserve: () --ContractId TransportCapacityReservation
+        with
+          quantities: [Int]
+        do
+          return ()
 
 template TransportQuoteRequestPending
   with
@@ -283,40 +329,29 @@ template ChooseTransportBotTrigger
   where
     signatory supplier
     controller supplier can
-      ChooseTransportBotTrigger_Proceed: (ContractId AggregatedQuotePending, [ContractId TransportCapacityLockRequest])
+      ChooseTransportBotTrigger_Proceed: (ContractId AggregatedQuotePending, [ContractId TransportCapacityReservation], [ContractId LockedInventoryItem])
         with
           quoteCids: [ContractId TransportQuote]
+          reservedInventoryItemCids: [ContractId InventoryItemReservation]
+          inventoryItemCids: [ContractId InventoryItem]
         do
           -- do the calculation here, which is the best transport quote?
           let bestQuoteCid = head quoteCids
           bestQuote <- fetch bestQuoteCid
-          lockReq <- create TransportCapacityLockRequest with
-                  transportCompany = bestQuote.transportCompany
-                  supplier = bestQuote.supplier
-                  item = (head items).allocation -- TODO fill out
-                  deliveryDate = (head items).deliveryFrom -- TODO
+          -- lockReq <- create TransportCapacityLockRequest with
+          --         transportCompany = bestQuote.transportCompany
+          --         supplier = bestQuote.supplier
+          --         item = (head items).allocation -- TODO fill out
+          --         deliveryDate = (head items).deliveryFrom -- TODO
 
           let price = (snd (head bestQuote.items)).price --TODO: proper map
           let deliveryDate = (snd (head bestQuote.items)).deliveryDate  --TODO: proper map
           let deliveryItems = map (\item -> (TransportedWarehouseAllocation item.allocation bestQuote.transportCompany deliveryDate, price)) items --TODO calculate prices based on quantity
           aggregated <- create AggregatedQuotePending with
-                  items = deliveryItems, ..
-          return (aggregated, [lockReq])
+                  items = zip3 deliveryItems [] [], ..
+          return (aggregated, [], [])
 
-template TransportCapacityLockRequest
-  with
-    transportCompany: Party
-    supplier: Party
-    item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
-    deliveryDate: Date
-  where
-    signatory supplier
-    controller transportCompany can
-      TransportCapacityLockRequest_Accept: ContractId TransportCapacityLock
-        do
-          create TransportCapacityLock with ..
-
-template TransportCapacityLock
+template TransportCapacityReservation
   with
     transportCompany: Party
     supplier: Party
@@ -331,20 +366,16 @@ template AggregatedQuotePending
     supplier: Party
     buyer: Party
     seller: Party
-    items: [TransportedWarehouseAllocationWithPrice]
+    items: [(TransportedWarehouseAllocationWithPrice, ContractId TransportCapacityReservation, ContractId LockedInventoryItem)]
   where
     signatory supplier
 
     controller supplier can
       AggregatedQuotePending_SendQuoteToSeller: ContractId AggregatedQuoteTrigger
-        with
-          --TODO check if this should be collected with bot. Also check if there is a need for manual "send quote to seller" step
-          transportCapacityLockCids: [ContractId TransportCapacityLock]
         do
           --TODO: check if locks correspond to items
-          let transportCapacityLockCid = head transportCapacityLockCids
-              deliveryItems = map (\(alloc, _price) -> DeliveryPlanItem alloc transportCapacityLockCid alloc.deliveryDate) items
-              quoteItems = map (\(alloc, price) -> PricedWarehouseAllocation alloc.allocation price) items --TODO: fix price (quantity * unitPrice)
+          let deliveryItems = map (\((alloc, _price), tcr, lii) -> DeliveryPlanItem alloc tcr lii alloc.deliveryDate) items
+              quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items --TODO: fix price (quantity * unitPrice)
           deliveryPlanCid <- create DeliveryPlan with
             items = deliveryItems, ..
           create AggregatedQuoteTrigger with
@@ -390,6 +421,7 @@ template AggregatedQuote
                 transportCapacityLockCid = item.transportCapacityLockCid
                 paymentRequestCid = req
                 deliveryDate = item.deliveryDate
+                lockedInventoryItemCid = item.lockedInventoryItemCid
             )
           deliveryPlanCid <- create DeliveryAndPaymentPlan with
             items = deliveryItems, ..
@@ -400,7 +432,8 @@ template AggregatedQuote
 
 data DeliveryPlanItem = DeliveryPlanItem with
     allocation: TransportedWarehouseAllocation
-    transportCapacityLockCid: ContractId TransportCapacityLock
+    transportCapacityLockCid: ContractId TransportCapacityReservation
+    lockedInventoryItemCid: ContractId LockedInventoryItem
     deliveryDate: Date
   deriving (Eq, Show)
 
@@ -416,7 +449,8 @@ template DeliveryPlan
 
 data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
     allocation: TransportedWarehouseAllocation
-    transportCapacityLockCid: ContractId TransportCapacityLock
+    transportCapacityLockCid: ContractId TransportCapacityReservation
+    lockedInventoryItemCid: ContractId LockedInventoryItem
     paymentRequestCid: ContractId PaymentRequest
     deliveryDate: Date
   deriving (Eq, Show)
@@ -439,6 +473,7 @@ template DeliveryAndPaymentPlan
               quantity = item.allocation.allocation.quantity
               transportCompany = item.allocation.transportCompany
               transportCapacityLockCid = item.transportCapacityLockCid
+              lockedInventoryItemCid = item.lockedInventoryItemCid
               paymentRequestCid = item.paymentRequestCid
               deliveryDate = item.deliveryDate, ..
             )
@@ -480,7 +515,8 @@ template DeliveryInstruction
     warehouse: Party
     quantity: Int
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityLock
+    transportCapacityLockCid: ContractId TransportCapacityReservation
+    lockedInventoryItemCid: ContractId LockedInventoryItem
     paymentRequestCid: ContractId PaymentRequest
     deliveryDate: Date
   where
@@ -503,7 +539,8 @@ template PickUpRequest
     warehouse: Party
     quantity: Int
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityLock
+    transportCapacityLockCid: ContractId TransportCapacityReservation
+    lockedInventoryItemCid: ContractId LockedInventoryItem
     paymentRequestCid: ContractId PaymentRequest
   where
     signatory transportCompany
@@ -511,12 +548,11 @@ template PickUpRequest
 
     controller warehouse can
       PickUpRequest_Accept: ContractId Delivery
-        with lockedInventoryItemCid: ContractId LockedInventoryItem
         do
           lockedInventoryItem <- fetch lockedInventoryItemCid
           assertMsg "aaa" $ lockedInventoryItem.productName == productName
           assertMsg "bbb" $ lockedInventoryItem.quantity >= quantity
-          exercise lockedInventoryItemCid $ LockedInventoryItem_PickUp quantity
+          archive lockedInventoryItemCid
           create Delivery with ..
 
 template PaymentRequest
@@ -540,7 +576,7 @@ template Delivery
     quantity: Int
     warehouse: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityLock
+    transportCapacityLockCid: ContractId TransportCapacityReservation
     paymentRequestCid: ContractId PaymentRequest
   where
     signatory warehouse, transportCompany
@@ -557,12 +593,24 @@ template DeliveryAck
   with
     buyer: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityLock
+    transportCapacityLockCid: ContractId TransportCapacityReservation
   where
     signatory buyer
     observer transportCompany
 
     controller transportCompany can
-      DeliveryAck_ReleaseCapacity: ()
+      DeliveryAck_ReleaseCapacity: ContractId TransportCapacityReleaseTrigger
+        do
+          create TransportCapacityReleaseTrigger with ..
+
+template TransportCapacityReleaseTrigger
+  with
+    transportCompany: Party
+    transportCapacityLockCid: ContractId TransportCapacityReservation
+  where
+    signatory transportCompany
+
+    controller transportCompany can
+      TransportCapacityReleaseTrigger_Release: ()
         do
           archive transportCapacityLockCid
