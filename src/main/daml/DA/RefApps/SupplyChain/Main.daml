@@ -6,8 +6,8 @@ module DA.RefApps.SupplyChain.Main where
 
 import DA.List
 import DA.Date
-import DA.Functor
-import DA.Optional
+
+import DA.RefApps.SupplyChain.Types
 
 -- Relationships
 
@@ -39,14 +39,6 @@ template BuyerSellerRelationship
 
 -- Quote request
 
-data OrderedProduct =
-  OrderedProduct {
-    productName: Text;
-    quantity: Int;
-    deliveryFrom: Date;
-    deliveryTo: Date
-  } deriving (Eq, Show)
-
 template QuoteRequest
   with
     buyer: Party
@@ -58,10 +50,12 @@ template QuoteRequest
     controller seller can
       QuoteRequest_Accept: ContractId QuoteRequestAccepted
         do
-          create QuoteRequestAccepted with ..
+          create QuoteRequestAccepted with
+            quoteId = self, ..
 
 template QuoteRequestAccepted
   with
+    quoteId: ContractId QuoteRequest -- opaque id of the workflow initiated by this QuoteRequest
     buyer: Party
     buyerAddress: Text
     seller  : Party
@@ -77,6 +71,7 @@ template QuoteRequestAccepted
 
 template QuoteRequestSupplyInvitation
   with
+    quoteId: ContractId QuoteRequest
     buyer: Party
     buyerAddress: Text
     seller: Party
@@ -89,35 +84,11 @@ template QuoteRequestSupplyInvitation
         do
           create SupplyRequest with ..
 
-data WarehouseAllocation = WarehouseAllocation with
-    productName: Text
-    warehouse: Party
-    quantity: Int
-  deriving (Eq, Show)
 
-data WarehouseAllocationWithDates = WarehouseAllocationWithDates with
-    allocation: WarehouseAllocation
-    deliveryFrom: Date
-    deliveryTo: Date
-  deriving (Eq, Show)
-
-data TransportedWarehouseAllocation = TransportedWarehouseAllocation with
-    allocation: WarehouseAllocation
-    transportCompany: Party
-    deliveryDate: Date
-  deriving (Eq, Show)
-
-data PricedWarehouseAllocation = PricedWarehouseAllocation with
-    allocation: WarehouseAllocation
-    price: Decimal
-  deriving (Eq, Show)
-
-
-type TransportedWarehouseAllocationWithPrice = (TransportedWarehouseAllocation, Decimal)
-type ProductWithQuantity = (Text, Int)
-
+-- Supplier can initiate the inventory reservation and transport quote collection with this template
 template SupplyRequest
   with
+    quoteId: ContractId QuoteRequest
     buyer: Party
     buyerAddress: Text
     seller: Party
@@ -126,35 +97,28 @@ template SupplyRequest
   where
     signatory seller, supplier
     controller supplier can
-      -- User chooses this option
       SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryReservationRequest], [ContractId TransportQuoteRequest])
         with
           warehouses: [Party]
           transportCompanies: [Party]
-          -- whatToLock: [WarehouseAllocation]
         do
-          l <- fmap concat $ forA warehouses
+          (invRequests, allocations) <- fmap (unzip . concat) $ forA warehouses
               (\w -> forA products
-                (\product ->
-                  create InventoryReservationRequest with
-                    warehouse = w, ..))
-          -- allocWithDates <- forA whatToLock (\alloc -> do
-          --     let correspondingOrder = find (\o -> o.productName == alloc.productName) products
-          --     assertMsg ("Locked product was not ordered: " <> alloc.productName) $ isSome correspondingOrder
-          --     let order = fromSome correspondingOrder
-          --     return $ WarehouseAllocationWithDates alloc order.deliveryFrom order.deliveryTo
-          --   )
-
-          -- create InventoryLockingBotTrigger with
-          --   whatToLock = allocWithDates, ..
-          let items = concat $
-                products <&>
-                  (\p -> warehouses <&>
-                    (\w -> WarehouseAllocationWithDates (WarehouseAllocation p.productName w p.quantity) p.deliveryFrom p.deliveryTo))
+                (\product -> do
+                  req <- create InventoryReservationRequest with
+                    warehouse = w, ..
+                  let wa = WarehouseAllocationWithDates (WarehouseAllocation product.productName w product.quantity) product.deliveryFrom product.deliveryTo
+                  return (req, wa)))
+          quoteRequests <- fmap concat $ forA transportCompanies
+              (\tc -> forA allocations
+                (\allocations ->
+                  create TransportQuoteRequest with
+                    transportCompany = tc
+                    item = allocations, ..))
 
           pending <- create TransportQuoteRequestPending with
-            items = items, ..
-          return (pending, l, [])
+            items = allocations, ..
+          return (pending, invRequests, quoteRequests)
 
 -- Inventory
 
@@ -173,6 +137,7 @@ template InventoryItem
         with
           reservation: ContractId InventoryItemReservation
           quantitiesToLock: [Int]
+          quoteId: ContractId QuoteRequest
         do
           let remainingQuantity = quantity - head quantitiesToLock -- TODO
           assertMsg "Non-positive remaining quantity." $ remainingQuantity > 0
@@ -182,6 +147,7 @@ template InventoryItem
 
 template LockedInventoryItem
   with
+    quoteId: ContractId QuoteRequest
     warehouse: Party
     supplier: Party
     productName: Text
@@ -193,6 +159,7 @@ template LockedInventoryItem
 
 template InventoryReservationRequest
   with
+    quoteId: ContractId QuoteRequest
     warehouse: Party
     supplier: Party
     product: OrderedProduct
@@ -213,6 +180,7 @@ template InventoryReservationRequest
 
 template InventoryItemReservation
   with
+    quoteId: ContractId QuoteRequest
     warehouse: Party
     supplier: Party
     productName: Text
@@ -276,26 +244,27 @@ data TransportQuoteItem = TransportQuoteItem with
 
 template TransportQuoteRequest
   with
+    quoteId: ContractId QuoteRequest
     transportCompany: Party
     supplier: Party
-    --TODO: buyerAddress: Text
-    items: [WarehouseAllocationWithDates]
+    buyer: Party
+    buyerAddress: Text
+    item: WarehouseAllocationWithDates
   where
     signatory supplier
     controller transportCompany can
       TransportQuoteRequest_Accept: ContractId TransportQuote
         with
-          quoteItems: [TransportQuoteItem]
+          quoteItem: TransportQuoteItem
         do
-          assertMsg "All ordered items must have a corresponding quote item" $ (length items) == (length quoteItems)
-          let zipped = zip (map (\i -> i.allocation) items) quoteItems
-          create TransportQuote with items = zipped, ..
+          create TransportQuote with item = (item.allocation, quoteItem), ..
 
 template TransportQuote
   with
+    quoteId: ContractId QuoteRequest
     transportCompany: Party
     supplier: Party
-    items: [(WarehouseAllocation, TransportQuoteItem)]
+    item: (WarehouseAllocation, TransportQuoteItem)
   where
     signatory supplier, transportCompany
 
@@ -308,6 +277,7 @@ template TransportQuote
 
 template TransportQuoteRequestPending
   with
+    quoteId: ContractId QuoteRequest
     supplier: Party
     buyer: Party
     seller: Party
@@ -322,6 +292,7 @@ template TransportQuoteRequestPending
 
 template ChooseTransportBotTrigger
   with
+    quoteId: ContractId QuoteRequest
     supplier: Party
     buyer: Party
     seller: Party
@@ -344,8 +315,8 @@ template ChooseTransportBotTrigger
           --         item = (head items).allocation -- TODO fill out
           --         deliveryDate = (head items).deliveryFrom -- TODO
 
-          let price = (snd (head bestQuote.items)).price --TODO: proper map
-          let deliveryDate = (snd (head bestQuote.items)).deliveryDate  --TODO: proper map
+          let price = (snd bestQuote.item).price --TODO: proper map
+          let deliveryDate = (snd bestQuote.item).deliveryDate  --TODO: proper map
           let deliveryItems = map (\item -> (TransportedWarehouseAllocation item.allocation bestQuote.transportCompany deliveryDate, price)) items --TODO calculate prices based on quantity
           aggregated <- create AggregatedQuotePending with
                   items = zip3 deliveryItems [] [], ..
@@ -353,6 +324,7 @@ template ChooseTransportBotTrigger
 
 template TransportCapacityReservation
   with
+    quoteId: ContractId QuoteRequest
     transportCompany: Party
     supplier: Party
     item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
@@ -363,6 +335,7 @@ template TransportCapacityReservation
 
 template AggregatedQuotePending
   with
+    quoteId: ContractId QuoteRequest
     supplier: Party
     buyer: Party
     seller: Party
@@ -383,6 +356,7 @@ template AggregatedQuotePending
 
 template AggregatedQuoteTrigger
   with
+    quoteId: ContractId QuoteRequest
     supplier: Party
     buyer: Party
     seller: Party
@@ -399,6 +373,7 @@ template AggregatedQuoteTrigger
 
 template AggregatedQuote
   with
+    quoteId: ContractId QuoteRequest
     supplier: Party
     buyer: Party
     seller: Party
@@ -439,6 +414,7 @@ data DeliveryPlanItem = DeliveryPlanItem with
 
 template DeliveryPlan
   with
+    quoteId: ContractId QuoteRequest
     supplier: Party
     buyer: Party
     seller: Party
@@ -457,6 +433,7 @@ data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
 
 template DeliveryAndPaymentPlan
   with
+    quoteId: ContractId QuoteRequest
     supplier: Party
     buyer: Party
     seller: Party
@@ -480,6 +457,7 @@ template DeliveryAndPaymentPlan
 
 template Quote
   with
+    quoteId: ContractId QuoteRequest
     seller: Party
     buyer: Party
     deliveryPlanCid: ContractId DeliveryAndPaymentPlan
@@ -496,6 +474,7 @@ template Quote
 
 template QuoteAccepted
   with
+    quoteId: ContractId QuoteRequest
     seller: Party
     buyer: Party
     deliveryPlanCid: ContractId DeliveryAndPaymentPlan
@@ -509,6 +488,7 @@ template QuoteAccepted
 
 template DeliveryInstruction
   with
+    quoteId: ContractId QuoteRequest
     buyer: Party
     seller: Party
     productName: Text
@@ -533,6 +513,7 @@ template DeliveryInstruction
 
 template PickUpRequest
   with
+    quoteId: ContractId QuoteRequest
     buyer: Party
     seller: Party
     productName: Text
@@ -557,6 +538,7 @@ template PickUpRequest
 
 template PaymentRequest
   with
+    quoteId: ContractId QuoteRequest
     buyer: Party
     seller: Party
     price: Decimal
@@ -570,6 +552,7 @@ template PaymentRequest
 
 template Delivery
   with
+    quoteId: ContractId QuoteRequest
     buyer: Party
     seller: Party
     productName: Text
@@ -591,6 +574,7 @@ template Delivery
 
 template DeliveryAck
   with
+    quoteId: ContractId QuoteRequest
     buyer: Party
     transportCompany: Party
     transportCapacityLockCid: ContractId TransportCapacityReservation
@@ -605,6 +589,7 @@ template DeliveryAck
 
 template TransportCapacityReleaseTrigger
   with
+    quoteId: ContractId QuoteRequest
     transportCompany: Party
     transportCapacityLockCid: ContractId TransportCapacityReservation
   where

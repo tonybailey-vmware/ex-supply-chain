@@ -7,6 +7,7 @@ module DA.RefApps.SupplyChain.Scenarios where
 import DA.Date
 
 import DA.RefApps.SupplyChain.Main
+import DA.RefApps.SupplyChain.Types
 
 data SetupData = SetupData with
     buyerRoleCid: ContractId BuyerSellerRelationship
@@ -29,7 +30,7 @@ setup = scenario do
 
   -- Predefined data
   let
-    product01 = OrderedProduct "banana" 10 (date 2019 Dec 1) (date 2019 Dec 10)
+    product01 = OrderedProduct "banana" 100 (date 2019 Dec 1) (date 2019 Dec 10)
     product02 = OrderedProduct "orange" 10 (date 2019 Dec 10) (date 2019 Dec 14)
     buyerAddress = "1234, Vice City, Arkham street 13"
 
@@ -45,7 +46,7 @@ setup = scenario do
         warehouse = warehouse1
         supplier = supplier
         productName = product01.productName
-        quantity = 100
+        quantity = 50
         unitPrice = 55.0
   inventoryW1P2Cid <- submit warehouse1 do
     create InventoryItem
@@ -62,7 +63,7 @@ setup = scenario do
         warehouse = warehouse2
         supplier = supplier
         productName = product01.productName
-        quantity = 100
+        quantity = 200
         unitPrice = 58.0
   inventoryW2P2Cid <- submit warehouse2 do
     create InventoryItem
@@ -100,29 +101,36 @@ fullScenario = scenario do
     exercise accepted QuoteRequestAccepted_SendToSupplier with
                         supplier = supplier
 
-  --TODO: fix the workflow below:
-
   -- Acceptance of invitation to supply the delivery, manual selection of product+warehouse+quantity for the quote
-  -- let
-  --   product1W1Allocation = WarehouseAllocation setupData.product01.productName warehouse1 8
-  --   product1W2Allocation = WarehouseAllocation setupData.product01.productName warehouse2 2
-  -- (tranQuoteReqPending, [], [transportQuoteReqest1, transportQuoteReqest2]) <-  submit supplier do
-  --   supplyRequest <-  exercise acceptedQr QuoteRequestSupplyInvitation_Accept
-  -- -- Selection of warehouses and transport companies, sending transport requests, asking for transport quotes
-  --   exercise supplyRequest $ SupplyRequest_StartPriceCollection [warehouse1, warehouse2] [transportComp1, transportComp2]
+  (tranQuoteReqPending, [invReservationReq1, invReservationReq2], [transportQuoteReqestT1W1, transportQuoteReqestT1W2, transportQuoteReqestT2W1, transportQuoteReqestT2W2]) <-  submit supplier do
+    supplyRequest <-  exercise acceptedQr QuoteRequestSupplyInvitation_Accept
+    -- Selection of warehouses and transport companies, sending transport requests, asking for transport quotes
+    exercise supplyRequest $ SupplyRequest_StartPriceCollection [warehouse1, warehouse2] [transportComp1, transportComp2]
 
-  -- -- Transport companies submit their transport quotes
-  -- let
-  --   transportQuoteItem1 = TransportQuoteItem 8 10.0 (date 2019 Dec 5)
-  --   transportQuoteItem2 = TransportQuoteItem 2 15.0 (date 2019 Dec 8)
-  -- transportQuote1 <- submit transportComp1 do
-  --   exercise transportQuoteReqest1 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2]
-
-  -- transportQuote2 <- submit transportComp2 do
-  --   exercise transportQuoteReqest2 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2] --FIXME: create different quote
+  -- Transport companies submit their transport quotes
+  let
+    transportQuoteItemT1_1 = TransportQuoteItem 30 10.0 (date 2019 Dec 5)
+    transportQuoteItemT1_2 = TransportQuoteItem 50 15.0 (date 2019 Dec 8)
+    transportQuoteItemT2_1 = TransportQuoteItem 50 12.0 (date 2019 Dec 5)
+    transportQuoteItemT2_2 = TransportQuoteItem 50 13.0 (date 2019 Dec 8)
+  transportQuoteT1W1 <- submit transportComp1 do
+    exercise transportQuoteReqestT1W1 $ TransportQuoteRequest_Accept transportQuoteItemT1_1
+  transportQuoteT1W2 <- submit transportComp1 do
+    exercise transportQuoteReqestT1W2 $ TransportQuoteRequest_Accept transportQuoteItemT1_2
+  transportQuoteT2W1 <- submit transportComp2 do
+    exercise transportQuoteReqestT2W1 $ TransportQuoteRequest_Accept transportQuoteItemT2_1
+  transportQuoteT2W2 <- submit transportComp2 do
+    exercise transportQuoteReqestT2W2 $ TransportQuoteRequest_Accept transportQuoteItemT2_2
 
   -- warehouses accept reservation requests
+  invReservationCid1 <- submit warehouse1 do
+    exercise invReservationReq1 $ InventoryReservationRequest_Accept setupData.inventoryW1P1Cid
 
+  invReservationCid2 <- submit warehouse2 do
+    exercise invReservationReq2 $ InventoryReservationRequest_Accept setupData.inventoryW2P1Cid
+
+
+  --TODO: fix the workflow below:
 
   -- After a manual signal (that means end of transport quote request period), supplier's BOT collects
   -- all the available quotes sent in by transport companies and the best is chosen

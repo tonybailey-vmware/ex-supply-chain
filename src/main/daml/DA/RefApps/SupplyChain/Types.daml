@@ -1,0 +1,36 @@
+daml 1.2
+module DA.RefApps.SupplyChain.Types where
+
+data OrderedProduct =
+  OrderedProduct {
+    productName: Text;
+    quantity: Int;
+    deliveryFrom: Date;
+    deliveryTo: Date
+  } deriving (Eq, Show)
+
+data WarehouseAllocation = WarehouseAllocation with
+    productName: Text
+    warehouse: Party
+    quantity: Int
+  deriving (Eq, Show)
+
+data WarehouseAllocationWithDates = WarehouseAllocationWithDates with
+    allocation: WarehouseAllocation
+    deliveryFrom: Date
+    deliveryTo: Date
+  deriving (Eq, Show)
+
+data TransportedWarehouseAllocation = TransportedWarehouseAllocation with
+    allocation: WarehouseAllocation
+    transportCompany: Party
+    deliveryDate: Date
+  deriving (Eq, Show)
+
+data PricedWarehouseAllocation = PricedWarehouseAllocation with
+    allocation: WarehouseAllocation
+    price: Decimal
+  deriving (Eq, Show)
+
+type TransportedWarehouseAllocationWithPrice = (TransportedWarehouseAllocation, Decimal)
+type ProductWithQuantity = (Text, Int)
