@@ -5,6 +5,7 @@ daml 1.2
 module DA.RefApps.SupplyChain.Main where
 
 import DA.List
+import DA.Date
 import DA.Optional
 
 -- Relationships
@@ -93,9 +94,16 @@ data WarehouseAllocation = WarehouseAllocation with
     quantity: Int
   deriving (Eq, Show)
 
+data WarehouseAllocationWithDates = WarehouseAllocationWithDates with
+    allocation: WarehouseAllocation
+    deliveryFrom: Date
+    deliveryTo: Date
+  deriving (Eq, Show)
+
 data TransportedWarehouseAllocation = TransportedWarehouseAllocation with
     allocation: WarehouseAllocation
     transportCompany: Party
+    deliveryDate: Date
   deriving (Eq, Show)
 
 data PricedWarehouseAllocation = PricedWarehouseAllocation with
@@ -104,7 +112,7 @@ data PricedWarehouseAllocation = PricedWarehouseAllocation with
   deriving (Eq, Show)
 
 
-type ProductWithWarehouseWithQuantityWithTransportWithPrice = (Text, Party, Int, Party, Decimal)
+type TransportedWarehouseAllocationWithPrice = (TransportedWarehouseAllocation, Decimal)
 type ProductWithQuantity = (Text, Int)
 
 template SupplyRequest
@@ -122,7 +130,14 @@ template SupplyRequest
         with
           whatToLock: [WarehouseAllocation]
         do
-          create InventoryLockingBotTrigger with ..
+          allocWithDates <- forA whatToLock (\alloc -> do
+              let correspondingOrder = find (\o -> o.productName == alloc.productName) products
+              assertMsg ("Locked product was not ordered: " <> alloc.productName) $ isSome correspondingOrder
+              let order = fromSome correspondingOrder
+              return $ WarehouseAllocationWithDates alloc order.deliveryFrom order.deliveryTo
+            )
+          create InventoryLockingBotTrigger with
+            whatToLock = allocWithDates, ..
 
 -- Inventory
 
@@ -175,7 +190,7 @@ template InventoryLockingBotTrigger
     supplier: Party
     buyer: Party
     seller: Party
-    whatToLock: [WarehouseAllocation]
+    whatToLock: [WarehouseAllocationWithDates]
   where
     signatory supplier
     controller supplier can
@@ -186,9 +201,9 @@ template InventoryLockingBotTrigger
           inventory <- forA inventoryCids fetch
           let inventoryPair = zip inventoryCids inventory
           lockResult <- forA whatToLock (\alloc -> do
-              let inventoryItem = fromSome $ find (\(cid, i) -> i.productName == alloc.productName && i.warehouse == alloc.warehouse) inventoryPair
+              let inventoryItem = fromSome $ find (\(cid, i) -> i.productName == alloc.allocation.productName && i.warehouse == alloc.allocation.warehouse) inventoryPair
               exercise (fst inventoryItem) $ InventoryItem_SplitAndLock with
-                                                quantityToLock = alloc.quantity
+                                                quantityToLock = alloc.allocation.quantity
             )
           let (_, lockedCids) = unzip lockResult
           proposal <- create RequestDeliveryProposal with
@@ -200,7 +215,7 @@ template RequestDeliveryProposal
     supplier: Party
     buyer: Party
     seller: Party
-    items: [WarehouseAllocation]
+    items: [WarehouseAllocationWithDates]
   where
     signatory supplier
     controller supplier can
@@ -216,34 +231,41 @@ template RequestDeliveryProposal
           return (pending, qRequests)
 
 data TransportQuoteItem = TransportQuoteItem with
-    allocation: WarehouseAllocation
     transportableQuantity: Int
     price: Decimal -- total price corresponding to transportableQuantity
+    deliveryDate: Date
   deriving (Eq, Show)
 
 template TransportQuoteRequest
   with
     transportCompany: Party
     supplier: Party
-    items: [WarehouseAllocation]
+    items: [WarehouseAllocationWithDates]
   where
     signatory supplier
     controller transportCompany can
       TransportQuoteRequest_Accept: ContractId TransportQuote
         with
-          quantityAndPricePerItem: [(Int, Decimal)]
+          quoteItems: [TransportQuoteItem]
         do
-          assertMsg "All ordered items must have a corresponding quote item" $ (length items) == (length quantityAndPricePerItem)
-          let zipped = zip items quantityAndPricePerItem
-          let quote = map (\(alloc, (transportable, price)) -> TransportQuoteItem alloc transportable price) zipped
-          create TransportQuote with items = quote, ..
+          assertMsg "All ordered items must have a corresponding quote item" $ (length items) == (length quoteItems)
+          let zipped = zip (map (\i -> i.allocation) items) quoteItems
+          create TransportQuote with items = zipped, ..
+
+template TransportQuote
+  with
+    transportCompany: Party
+    supplier: Party
+    items: [(WarehouseAllocation, TransportQuoteItem)]
+  where
+    signatory supplier, transportCompany
 
 template TransportQuoteRequestPending
   with
     supplier: Party
     buyer: Party
     seller: Party
-    items: [WarehouseAllocation]
+    items: [WarehouseAllocationWithDates]
   where
     signatory supplier
     controller supplier can
@@ -252,20 +274,12 @@ template TransportQuoteRequestPending
         do
           create ChooseTransportBotTrigger with ..
 
-template TransportQuote
-  with
-    transportCompany: Party
-    supplier: Party
-    items: [TransportQuoteItem]
-  where
-    signatory supplier, transportCompany
-
 template ChooseTransportBotTrigger
   with
     supplier: Party
     buyer: Party
     seller: Party
-    items: [WarehouseAllocation]
+    items: [WarehouseAllocationWithDates]
   where
     signatory supplier
     controller supplier can
@@ -279,10 +293,12 @@ template ChooseTransportBotTrigger
           lockReq <- create TransportCapacityLockRequest with
                   transportCompany = bestQuote.transportCompany
                   supplier = bestQuote.supplier
-                  item = head items -- fill out
+                  item = (head items).allocation -- TODO fill out
+                  deliveryDate = (head items).deliveryFrom -- TODO
 
-          let price = (head bestQuote.items).price --TODO: proper map
-          let deliveryItems = map (\(WarehouseAllocation p w q) -> (p, w, q, bestQuote.transportCompany, price)) items --TODO calculate prices based on quantity
+          let price = (snd (head bestQuote.items)).price --TODO: proper map
+          let deliveryDate = (snd (head bestQuote.items)).deliveryDate  --TODO: proper map
+          let deliveryItems = map (\item -> (TransportedWarehouseAllocation item.allocation bestQuote.transportCompany deliveryDate, price)) items --TODO calculate prices based on quantity
           aggregated <- create AggregatedQuotePending with
                   items = deliveryItems, ..
           return (aggregated, [lockReq])
@@ -292,6 +308,7 @@ template TransportCapacityLockRequest
     transportCompany: Party
     supplier: Party
     item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
+    deliveryDate: Date
   where
     signatory supplier
     controller transportCompany can
@@ -304,6 +321,7 @@ template TransportCapacityLock
     transportCompany: Party
     supplier: Party
     item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
+    deliveryDate: Date
   where
     signatory transportCompany
     observer supplier
@@ -313,7 +331,7 @@ template AggregatedQuotePending
     supplier: Party
     buyer: Party
     seller: Party
-    items: [ProductWithWarehouseWithQuantityWithTransportWithPrice]
+    items: [TransportedWarehouseAllocationWithPrice]
   where
     signatory supplier
 
@@ -325,8 +343,8 @@ template AggregatedQuotePending
         do
           --TODO: check if locks correspond to items
           let transportCapacityLockCid = head transportCapacityLockCids
-              deliveryItems = map (\(p, w, q, tc, _price) -> DeliveryPlanItem (TransportedWarehouseAllocation (WarehouseAllocation p w q) tc) transportCapacityLockCid) items
-              quoteItems = map (\(p, w, q, _tc, price) -> PricedWarehouseAllocation (WarehouseAllocation p w q) price) items --TODO: fix price (quantity * unitPrice)
+              deliveryItems = map (\(alloc, _price) -> DeliveryPlanItem alloc transportCapacityLockCid alloc.deliveryDate) items
+              quoteItems = map (\(alloc, price) -> PricedWarehouseAllocation alloc.allocation price) items --TODO: fix price (quantity * unitPrice)
           deliveryPlanCid <- create DeliveryPlan with
             items = deliveryItems, ..
           create AggregatedQuoteTrigger with
@@ -371,6 +389,7 @@ template AggregatedQuote
                 allocation = item.allocation
                 transportCapacityLockCid = item.transportCapacityLockCid
                 paymentRequestCid = req
+                deliveryDate = item.deliveryDate
             )
           deliveryPlanCid <- create DeliveryAndPaymentPlan with
             items = deliveryItems, ..
@@ -382,6 +401,7 @@ template AggregatedQuote
 data DeliveryPlanItem = DeliveryPlanItem with
     allocation: TransportedWarehouseAllocation
     transportCapacityLockCid: ContractId TransportCapacityLock
+    deliveryDate: Date
   deriving (Eq, Show)
 
 template DeliveryPlan
@@ -398,6 +418,7 @@ data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
     allocation: TransportedWarehouseAllocation
     transportCapacityLockCid: ContractId TransportCapacityLock
     paymentRequestCid: ContractId PaymentRequest
+    deliveryDate: Date
   deriving (Eq, Show)
 
 template DeliveryAndPaymentPlan
@@ -418,7 +439,8 @@ template DeliveryAndPaymentPlan
               quantity = item.allocation.allocation.quantity
               transportCompany = item.allocation.transportCompany
               transportCapacityLockCid = item.transportCapacityLockCid
-              paymentRequestCid = item.paymentRequestCid, ..
+              paymentRequestCid = item.paymentRequestCid
+              deliveryDate = item.deliveryDate, ..
             )
 
 template Quote
@@ -460,6 +482,7 @@ template DeliveryInstruction
     transportCompany: Party
     transportCapacityLockCid: ContractId TransportCapacityLock
     paymentRequestCid: ContractId PaymentRequest
+    deliveryDate: Date
   where
     signatory seller
     observer transportCompany
@@ -467,7 +490,9 @@ template DeliveryInstruction
     controller transportCompany can
       DeliveryInstruction_PickUp: ContractId PickUpRequest
         do
-          --TODO: inventory lock
+          now <- getTime
+          let today = toDateUTC now
+          assertMsg ("Pick up should happen on the delivery date: " <> show deliveryDate) $ (today == deliveryDate)
           create PickUpRequest with ..
 
 template PickUpRequest

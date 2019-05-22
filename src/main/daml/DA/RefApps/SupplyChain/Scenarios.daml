@@ -116,13 +116,13 @@ fullScenario = scenario do
 
   -- Transport companies submit their transport quotes
   let
-    transportQuoteItem1 = TransportQuoteItem product1W1Allocation 8 10.0
-    transportQuoteItem2 = TransportQuoteItem product1W2Allocation 2 15.0
+    transportQuoteItem1 = TransportQuoteItem 8 10.0 (date 2019 Dec 5)
+    transportQuoteItem2 = TransportQuoteItem 2 15.0 (date 2019 Dec 8)
   transportQuote1 <- submit transportComp1 do
-    exercise transportQuoteReqest1 $ TransportQuoteRequest_Accept [(8, 10.0), (2, 15.0)]
+    exercise transportQuoteReqest1 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2]
 
   transportQuote2 <- submit transportComp2 do
-    exercise transportQuoteReqest2 $ TransportQuoteRequest_Accept [(8, 10.0), (2, 15.0)] --FIXME: create different quote
+    exercise transportQuoteReqest2 $ TransportQuoteRequest_Accept [transportQuoteItem1, transportQuoteItem2] --FIXME: create different quote
 
   -- After a manual signal (that means end of transport quote request period), supplier's BOT collects
   -- all the available quotes sent in by transport companies and the best is chosen
@@ -151,6 +151,8 @@ fullScenario = scenario do
   -- Seller start the delivery process notifying all the participants of the process
   [deliveryInstruction1, deliveryInstruction2] <- submit seller do
     exercise accepted QuoteAccepted_StartDelivery
+
+  passToDate $ date 2019 Dec 5
 
   -- Transport company asks for pickup acknowledgement
   pickUpReq <- submit transportComp1 do
