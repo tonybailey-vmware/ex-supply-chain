@@ -124,10 +124,10 @@ fullScenario = scenario do
 
   -- warehouses accept reservation requests
   invReservationCid1 <- submit warehouse1 do
-    exercise invReservationReq1 $ InventoryReservationRequest_Accept setupData.inventoryW1P1Cid
+    exercise invReservationReq1 $ InventoryQuoteRequest_Accept setupData.inventoryW1P1Cid
 
   invReservationCid2 <- submit warehouse2 do
-    exercise invReservationReq2 $ InventoryReservationRequest_Accept setupData.inventoryW2P1Cid
+    exercise invReservationReq2 $ InventoryQuoteRequest_Accept setupData.inventoryW2P1Cid
 
 
   --TODO: fix the workflow below:

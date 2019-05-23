@@ -97,7 +97,7 @@ template SupplyRequest
   where
     signatory seller, supplier
     controller supplier can
-      SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryReservationRequest], [ContractId TransportQuoteRequest])
+      SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryQuoteRequest], [ContractId TransportQuoteRequest])
         with
           warehouses: [Party]
           transportCompanies: [Party]
@@ -105,7 +105,7 @@ template SupplyRequest
           (invRequests, allocations) <- fmap (unzip . concat) $ forA warehouses
               (\w -> forA products
                 (\product -> do
-                  req <- create InventoryReservationRequest with
+                  req <- create InventoryQuoteRequest with
                     warehouse = w, ..
                   let wa = WarehouseAllocationWithDates (WarehouseAllocation product.productName w product.quantity) product.deliveryFrom product.deliveryTo
                   return (req, wa)))
@@ -135,7 +135,7 @@ template InventoryItem
     controller supplier can
       InventoryItem_SplitAndLock: (ContractId InventoryItem, ContractId LockedInventoryItem)
         with
-          reservation: ContractId InventoryItemReservation
+          reservation: ContractId InventoryQuote
           quantitiesToLock: [Int]
           quoteId: ContractId QuoteRequest
         do
@@ -157,7 +157,7 @@ template LockedInventoryItem
     signatory warehouse
     observer supplier
 
-template InventoryReservationRequest
+template InventoryQuoteRequest
   with
     quoteId: ContractId QuoteRequest
     warehouse: Party
@@ -167,18 +167,18 @@ template InventoryReservationRequest
     signatory supplier
 
     controller warehouse can
-      InventoryReservationRequest_Accept: ContractId InventoryItemReservation
+      InventoryQuoteRequest_Accept: ContractId InventoryQuote
         with
           inventoryItemCid: ContractId InventoryItem
         do
           item <- fetch inventoryItemCid
           let reservedQuantity = min item.quantity product.quantity
-          create InventoryItemReservation with
+          create InventoryQuote with
             quantity = reservedQuantity
             price = item.unitPrice * intToDecimal reservedQuantity
             productName = product.productName, ..
 
-template InventoryItemReservation
+template InventoryQuote
   with
     quoteId: ContractId QuoteRequest
     warehouse: Party
@@ -269,7 +269,7 @@ template TransportQuote
     signatory supplier, transportCompany
 
     controller supplier can
-      TransportQuote_Reserve: () --ContractId TransportCapacityReservation
+      TransportQuote_Lock: () --ContractId LockedTransportCapacity
         with
           quantities: [Int]
         do
@@ -300,10 +300,10 @@ template ChooseTransportBotTrigger
   where
     signatory supplier
     controller supplier can
-      ChooseTransportBotTrigger_Proceed: (ContractId AggregatedQuotePending, [ContractId TransportCapacityReservation], [ContractId LockedInventoryItem])
+      ChooseTransportBotTrigger_Proceed: (ContractId AggregatedQuotePending, [ContractId LockedTransportCapacity], [ContractId LockedInventoryItem])
         with
           quoteCids: [ContractId TransportQuote]
-          reservedInventoryItemCids: [ContractId InventoryItemReservation]
+          reservedInventoryItemCids: [ContractId InventoryQuote]
           inventoryItemCids: [ContractId InventoryItem]
         do
           -- do the calculation here, which is the best transport quote?
@@ -322,7 +322,7 @@ template ChooseTransportBotTrigger
                   items = zip3 deliveryItems [] [], ..
           return (aggregated, [], [])
 
-template TransportCapacityReservation
+template LockedTransportCapacity
   with
     quoteId: ContractId QuoteRequest
     transportCompany: Party
@@ -339,7 +339,7 @@ template AggregatedQuotePending
     supplier: Party
     buyer: Party
     seller: Party
-    items: [(TransportedWarehouseAllocationWithPrice, ContractId TransportCapacityReservation, ContractId LockedInventoryItem)]
+    items: [(TransportedWarehouseAllocationWithPrice, ContractId LockedTransportCapacity, ContractId LockedInventoryItem)]
   where
     signatory supplier
 
@@ -407,7 +407,7 @@ template AggregatedQuote
 
 data DeliveryPlanItem = DeliveryPlanItem with
     allocation: TransportedWarehouseAllocation
-    transportCapacityLockCid: ContractId TransportCapacityReservation
+    transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
     deliveryDate: Date
   deriving (Eq, Show)
@@ -425,7 +425,7 @@ template DeliveryPlan
 
 data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
     allocation: TransportedWarehouseAllocation
-    transportCapacityLockCid: ContractId TransportCapacityReservation
+    transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
     paymentRequestCid: ContractId PaymentRequest
     deliveryDate: Date
@@ -495,7 +495,7 @@ template DeliveryInstruction
     warehouse: Party
     quantity: Int
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityReservation
+    transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
     paymentRequestCid: ContractId PaymentRequest
     deliveryDate: Date
@@ -520,7 +520,7 @@ template PickUpRequest
     warehouse: Party
     quantity: Int
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityReservation
+    transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
     paymentRequestCid: ContractId PaymentRequest
   where
@@ -559,7 +559,7 @@ template Delivery
     quantity: Int
     warehouse: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityReservation
+    transportCapacityLockCid: ContractId LockedTransportCapacity
     paymentRequestCid: ContractId PaymentRequest
   where
     signatory warehouse, transportCompany
@@ -577,7 +577,7 @@ template DeliveryAck
     quoteId: ContractId QuoteRequest
     buyer: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityReservation
+    transportCapacityLockCid: ContractId LockedTransportCapacity
   where
     signatory buyer
     observer transportCompany
@@ -591,7 +591,7 @@ template TransportCapacityReleaseTrigger
   with
     quoteId: ContractId QuoteRequest
     transportCompany: Party
-    transportCapacityLockCid: ContractId TransportCapacityReservation
+    transportCapacityLockCid: ContractId LockedTransportCapacity
   where
     signatory transportCompany
 
