@@ -1,0 +1,138 @@
+/**
+ * Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+ */
+package com.digitalasset.refapps.supplychain;
+
+import static com.digitalasset.refapps.supplychain.util.TemplateManager.filterTemplates;
+import static com.digitalasset.refapps.supplychain.util.TemplateManager.filterTemplatesWith;
+
+import com.daml.ledger.javaapi.data.Filter;
+import com.daml.ledger.javaapi.data.FiltersByParty;
+import com.daml.ledger.javaapi.data.InclusiveFilter;
+import com.daml.ledger.javaapi.data.Record;
+import com.daml.ledger.javaapi.data.Template;
+import com.daml.ledger.javaapi.data.TransactionFilter;
+import com.daml.ledger.rxjava.components.LedgerViewFlowable;
+import com.daml.ledger.rxjava.components.helpers.CommandsAndPendingSet;
+import com.daml.ledger.rxjava.components.helpers.CreatedContract;
+import com.digitalasset.refapps.supplychain.util.BotLogger;
+import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
+import com.google.common.collect.Sets;
+import da.refapps.supplychain.main.ChooseTransportBotTrigger;
+import da.refapps.supplychain.main.InventoryItem;
+import da.refapps.supplychain.main.InventoryQuote;
+import da.refapps.supplychain.main.TransportQuote;
+import io.reactivex.Flowable;
+import java.util.*;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+
+public class ChooseTransportBot {
+
+  private final Logger logger;
+  private final CommandsAndPendingSetBuilder commandBuilder;
+
+  public final TransactionFilter transactionFilter;
+
+  public ChooseTransportBot(
+      CommandsAndPendingSetBuilder.Factory commandBuilderFactory, String partyName) {
+    String workflowId =
+        "WORKFLOW-" + partyName + "-ChooseTransportBot-" + UUID.randomUUID().toString();
+    logger = BotLogger.getLogger(ChooseTransportBot.class, workflowId);
+
+    commandBuilder = commandBuilderFactory.create(partyName, workflowId);
+
+    Filter messageFilter =
+        new InclusiveFilter(
+            Sets.newHashSet(
+                ChooseTransportBotTrigger.TEMPLATE_ID,
+                TransportQuote.TEMPLATE_ID,
+                InventoryQuote.TEMPLATE_ID,
+                InventoryItem.TEMPLATE_ID));
+
+    this.transactionFilter = new FiltersByParty(Collections.singletonMap(partyName, messageFilter));
+    logger.info("Startup.");
+  }
+
+  public Flowable<CommandsAndPendingSet> calculateCommands(
+      LedgerViewFlowable.LedgerView<Template> ledgerView) {
+
+    CommandsAndPendingSetBuilder.Builder builder = commandBuilder.newBuilder();
+
+    Map<String, ChooseTransportBotTrigger> transportBotTriggers =
+        filterTemplates(
+            ChooseTransportBotTrigger.class,
+            ledgerView.getContracts(ChooseTransportBotTrigger.TEMPLATE_ID));
+
+    for (Map.Entry<String, ChooseTransportBotTrigger> e : transportBotTriggers.entrySet()) {
+      String quoteId = e.getValue().quoteId.contractId;
+
+      List<TransportQuote.ContractId> quoteCids =
+          filterTemplatesWith(
+                  TransportQuote.class,
+                  ledgerView.getContracts(TransportQuote.TEMPLATE_ID),
+                  transpQuote -> transpQuote.quoteId.equals(quoteId))
+              .entrySet().stream()
+              .map(invItemRes -> new TransportQuote.ContractId(invItemRes.getKey()))
+              .collect(Collectors.toList());
+      List<Map.Entry<String, InventoryQuote>> inventoryQuotes =
+          new ArrayList<>(
+              filterTemplatesWith(
+                      InventoryQuote.class,
+                      ledgerView.getContracts(InventoryQuote.TEMPLATE_ID),
+                      invItemRes -> invItemRes.quoteId.equals(quoteId))
+                  .entrySet());
+      List<InventoryQuote.ContractId> inventoryQuoteCids =
+          inventoryQuotes.stream()
+              .map(entry -> new InventoryQuote.ContractId(entry.getKey()))
+              .collect(Collectors.toList());
+      List<InventoryItem.ContractId> inventoryItemCids =
+          filterTemplatesWith(
+                  InventoryItem.class,
+                  ledgerView.getContracts(InventoryItem.TEMPLATE_ID),
+                  invItem -> isInventoryItemAmongInvQuotes(inventoryQuotes, invItem))
+              .entrySet().stream()
+              .map(invItemRes -> new InventoryItem.ContractId(invItemRes.getKey()))
+              .collect(Collectors.toList());
+
+      builder.addCommand(
+          new ChooseTransportBotTrigger.ContractId(e.getKey())
+              .exerciseChooseTransportBotTrigger_Proceed(
+                  quoteCids, inventoryQuoteCids, inventoryItemCids));
+    }
+
+    return builder
+        .buildFlowable()
+        .doOnError(err -> logger.error("There was an error: {}", err.getMessage()));
+  }
+
+  private boolean isInventoryItemAmongInvQuotes(
+      List<Map.Entry<String, InventoryQuote>> inventoryQuotes, InventoryItem invItem) {
+    for (Map.Entry<String, InventoryQuote> reservedInvItem : inventoryQuotes) {
+      if (invItem.productName.equals(reservedInvItem.getValue().productName)
+          && invItem.warehouse.equals(reservedInvItem.getValue().warehouse)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public Template getContractInfo(CreatedContract createdContract) {
+    Record args = createdContract.getCreateArguments();
+    if (createdContract.getTemplateId().equals(ChooseTransportBotTrigger.TEMPLATE_ID)) {
+      return ChooseTransportBotTrigger.fromValue(args);
+    } else if (createdContract.getTemplateId().equals(TransportQuote.TEMPLATE_ID)) {
+      return TransportQuote.fromValue(args);
+    } else if (createdContract.getTemplateId().equals(InventoryQuote.TEMPLATE_ID)) {
+      return InventoryQuote.fromValue(args);
+    } else if (createdContract.getTemplateId().equals(InventoryItem.TEMPLATE_ID)) {
+      return InventoryItem.fromValue(args);
+    } else {
+      String msg =
+          "ERROR: ChooseTransportBot encountered an unknown contract of type "
+              + createdContract.getTemplateId();
+      logger.error(msg);
+      throw new IllegalStateException(msg);
+    }
+  }
+}

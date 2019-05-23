@@ -1,5 +1,9 @@
+#
+# Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+#
+
 project:
-  sdk-version: 0.12.18
+  sdk-version: 0.12.19
   name: supplychain
   source: src/main/daml/DA/RefApps/SupplyChain/Scenarios.daml
   scenario: DA.RefApps.SupplyChain.Scenarios:setup

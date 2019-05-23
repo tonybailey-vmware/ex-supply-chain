@@ -2,3 +2,5 @@
 *.log
 .package-database
 target
+.interfaces
+.idea
