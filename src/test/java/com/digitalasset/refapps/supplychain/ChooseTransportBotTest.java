@@ -35,7 +35,7 @@ public class ChooseTransportBotTest {
   private ChooseTransportBot bot = new ChooseTransportBot(commandBuilder, PARTY);
 
   @Test
-  public void calculateCommands() throws InvocationTargetException, IllegalAccessException {
+  public void calculateCommands() {
     ledgerView =
         new LedgerViewFlowable.LedgerTestView(
             HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty());

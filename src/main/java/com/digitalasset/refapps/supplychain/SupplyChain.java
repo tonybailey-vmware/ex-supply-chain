@@ -4,16 +4,31 @@
 package com.digitalasset.refapps.supplychain;
 
 import com.daml.ledger.rxjava.DamlLedgerClient;
+import com.daml.ledger.rxjava.components.Bot;
 import com.digitalasset.refapps.supplychain.util.CliOptions;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+
+import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SupplyChain {
   public static final String APPLICATION_ID = "direct-asset-control";
   private static final Logger logger = LoggerFactory.getLogger(SupplyChain.class);
-  //  private static final AtomicReference<Clock> clock =
-  //      new AtomicReference<>(Clock.fixed(Instant.ofEpochSecond(0), ZoneId.systemDefault()));
+
+  private static final String SELLER_PARTY = "Seller";
+  private static final String SUPPLIER_PARTY = "Supplier";
+  private static final String TRANSPORT_PARTY1 = "TransportCompany1";
+  private static final String TRANSPORT_PARTY2 = "TransportCompany2";
+
+  private static final AtomicReference<Clock> clock =
+        new AtomicReference<>(Clock.fixed(Instant.ofEpochSecond(0), ZoneId.systemDefault()));
 
   public static void main(String[] args) {
     CliOptions options = CliOptions.parseArgs(args);
@@ -34,9 +49,36 @@ public class SupplyChain {
     //            .doOnNext(ts -> logger.info("Received time change {}", ts))
     //            .doOnNext(ts -> clock.set(Clock.fixed(ts, ZoneId.systemDefault())));
 
-    //    Duration mrt = Duration.ofSeconds(10);
-    //    CommandsAndPendingSetBuilder.Factory commandBuilderFactory =
-    //        CommandsAndPendingSetBuilder.factory(APPLICATION_ID, clock::get, mrt);
+    Duration mrt = Duration.ofSeconds(10);
+    CommandsAndPendingSetBuilder.Factory commandBuilderFactory =
+        CommandsAndPendingSetBuilder.factory(APPLICATION_ID, clock::get, mrt);
+
+    AggregatedQuoteBot aggregatedQuoteBot = new AggregatedQuoteBot(commandBuilderFactory, SELLER_PARTY);
+    Bot.wire(APPLICATION_ID,
+             client,
+             aggregatedQuoteBot.transactionFilter,
+             aggregatedQuoteBot::calculateCommands,
+             aggregatedQuoteBot::getContractInfo);
+
+    ChooseTransportBot chooseTransportBot = new ChooseTransportBot(commandBuilderFactory, SUPPLIER_PARTY);
+    Bot.wire(APPLICATION_ID,
+            client,
+            chooseTransportBot.transactionFilter,
+            chooseTransportBot::calculateCommands,
+            chooseTransportBot::getContractInfo);
+
+    TransportCapacityReleaseBot transportCapacityReleaseBot1 = new TransportCapacityReleaseBot(commandBuilderFactory, TRANSPORT_PARTY1);
+    Bot.wire(APPLICATION_ID,
+            client,
+            transportCapacityReleaseBot1.transactionFilter,
+            transportCapacityReleaseBot1::calculateCommands,
+            transportCapacityReleaseBot1::getContractInfo);
+    TransportCapacityReleaseBot transportCapacityReleaseBot2 = new TransportCapacityReleaseBot(commandBuilderFactory, TRANSPORT_PARTY2);
+    Bot.wire(APPLICATION_ID,
+            client,
+            transportCapacityReleaseBot2.transactionFilter,
+            transportCapacityReleaseBot2::calculateCommands,
+            transportCapacityReleaseBot2::getContractInfo);
   }
 
   public static void waitForSandbox(CliOptions options, DamlLedgerClient client) {
