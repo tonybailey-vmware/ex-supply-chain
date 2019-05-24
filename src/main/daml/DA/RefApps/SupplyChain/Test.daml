@@ -1,0 +1,93 @@
+daml 1.2
+module DA.RefApps.SupplyChain.Test where
+
+import DA.RefApps.SupplyChain.Scenarios
+import DA.RefApps.SupplyChain.Main
+import DA.RefApps.SupplyChain.Types
+
+deliv = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+  setupData <- setup
+
+  quoteReq <- submit buyer do
+    exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
+                        products = [setupData.product01]
+
+
+  transportPayReq <- submit transportComp1 do
+    create PaymentRequest with
+      payer = supplier
+      payee = transportComp1
+      price = 0.1
+
+  lockTrans <- submit transportComp1 do
+    create LockedTransportCapacity with
+      quoteId = quoteReq
+      transportCompany = transportComp1
+      supplier = supplier
+      deliveryDate = setupData.product01.deliveryFrom
+      item = (WarehouseAllocation setupData.product01.productName warehouse1 55)
+      transportPaymentRequestCid = transportPayReq
+
+  buyerPayReq <- submit seller do
+    create PaymentRequest with
+      payer = buyer
+      payee = seller
+      price = 11.1
+
+  warehousePayReq <- submit warehouse1 do
+    create PaymentRequest with
+      payer = supplier
+      payee = warehouse1
+      price = 9.8
+
+  lockedInv <- submit warehouse1 do
+    create LockedInventoryItem with
+      quoteId = quoteReq
+      warehouse = warehouse1
+      supplier = supplier
+      productName = setupData.product01.productName
+      quantity = 1
+      unitPrice = 1.0
+      warehousePaymentRequestCid = warehousePayReq
+
+  supplierPayReq <- submit supplier do
+    create PaymentRequest with
+      payer = seller
+      payee = supplier
+      price = 11.2
+
+  pickupRequest <- submit transportComp1 do
+    create PickUpRequest with
+      quoteId = quoteReq
+      buyer = buyer
+      seller = seller
+      productName = setupData.product01.productName
+      quantity = 1
+      warehouse = warehouse1
+      transportCompany = transportComp1
+      transportCapacityLockCid = lockTrans
+      buyerPaymentRequestCid = buyerPayReq
+      supplierPaymentRequestCid = supplierPayReq
+      lockedInventoryItemCid = lockedInv
+
+  delivery <- submit warehouse1 do
+    exercise pickupRequest PickUpRequest_Accept
+
+  complete <- submit buyer do
+    exercise delivery Delivery_Acknowledge
+
+  deliveryPayment <- submit seller do
+    exercise complete DeliveryComplete_Accept
+
+  submit supplier do
+    (supplierPayment, _) <- exercise deliveryPayment DeliveryPayment_Accept
+    exercise supplierPayment DeliverySupplierPayment_Pay
+
+  return ()

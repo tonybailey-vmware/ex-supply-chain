@@ -140,9 +140,17 @@ template InventoryItem
           quantitiesToLock: [Int]
           quoteId: ContractId QuoteRequest
         do
-          let remainingQuantity = quantity - head quantitiesToLock -- TODO
+          let quantityToLock = head quantitiesToLock -- TODO: cycle instead
+          let remainingQuantity = quantity - quantityToLock
           assertMsg "Non-positive remaining quantity." $ remainingQuantity > 0
+
           this2 <- create InventoryItem with quantity = remainingQuantity, ..
+
+          warehousePaymentRequestCid <- create PaymentRequest with
+            payer = supplier
+            payee = warehouse
+            price = unitPrice * intToDecimal quantityToLock
+
           locked <- create LockedInventoryItem with quantity = head quantitiesToLock, .. --TODO
           return (this2, locked)
 
@@ -154,6 +162,7 @@ template LockedInventoryItem
     productName: Text
     quantity: Int
     unitPrice: Decimal
+    warehousePaymentRequestCid: ContractId PaymentRequest
   where
     signatory warehouse
     observer supplier
@@ -330,9 +339,15 @@ template LockedTransportCapacity
     supplier: Party
     item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
     deliveryDate: Date
+    transportPaymentRequestCid: ContractId PaymentRequest
   where
     signatory transportCompany
     observer supplier
+
+    controller supplier can
+      LockedTransportCapacity_ReleaseAndPay: ContractId PaymentObligation
+        do
+          exercise transportPaymentRequestCid PaymentRequest_Pay
 
 template AggregatedQuotePending
   with
@@ -348,8 +363,14 @@ template AggregatedQuotePending
       AggregatedQuotePending_SendQuoteToSeller: ContractId AggregatedQuoteTrigger
         do
           --TODO: check if locks correspond to items
-          let deliveryItems = map (\((alloc, _price), tcr, lii) -> DeliveryPlanItem alloc tcr lii alloc.deliveryDate) items
-              quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items --TODO: fix price (quantity * unitPrice)
+
+          deliveryItems <- forA items (\((alloc, price), ltc, lii) -> do
+            supplierPayment <- create PaymentRequest with
+              payer = seller
+              payee = supplier
+              price = price
+            return $ DeliveryPlanItem alloc ltc lii supplierPayment alloc.deliveryDate)
+          let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items --TODO: fix price (quantity * unitPrice)
           deliveryPlanCid <- create DeliveryPlan with
             items = deliveryItems, ..
           create AggregatedQuoteTrigger with
@@ -391,11 +412,14 @@ template AggregatedQuote
           deliveryPlan <- fetch deliveryPlanCid
           deliveryItems <- forA deliveryPlan.items (\item -> do
               req <- create PaymentRequest with
-                price = (head itemsWithMargin).price, .. --FIXME
+                price = (head itemsWithMargin).price --FIXME
+                payer = buyer
+                payee = seller
               return DeliveryAndPaymentPlanItem with
                 allocation = item.allocation
                 transportCapacityLockCid = item.transportCapacityLockCid
-                paymentRequestCid = req
+                buyerPaymentRequestCid = req
+                supplierPaymentRequestCid = item.supplierPaymentRequestCid
                 deliveryDate = item.deliveryDate
                 lockedInventoryItemCid = item.lockedInventoryItemCid
             )
@@ -410,6 +434,7 @@ data DeliveryPlanItem = DeliveryPlanItem with
     allocation: TransportedWarehouseAllocation
     transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
+    supplierPaymentRequestCid: ContractId PaymentRequest
     deliveryDate: Date
   deriving (Eq, Show)
 
@@ -428,7 +453,8 @@ data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
     allocation: TransportedWarehouseAllocation
     transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
-    paymentRequestCid: ContractId PaymentRequest
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
     deliveryDate: Date
   deriving (Eq, Show)
 
@@ -452,7 +478,8 @@ template DeliveryAndPaymentPlan
               transportCompany = item.allocation.transportCompany
               transportCapacityLockCid = item.transportCapacityLockCid
               lockedInventoryItemCid = item.lockedInventoryItemCid
-              paymentRequestCid = item.paymentRequestCid
+              buyerPaymentRequestCid = item.buyerPaymentRequestCid
+              supplierPaymentRequestCid = item.supplierPaymentRequestCid
               deliveryDate = item.deliveryDate, ..
             )
 
@@ -498,7 +525,8 @@ template DeliveryInstruction
     transportCompany: Party
     transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
-    paymentRequestCid: ContractId PaymentRequest
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
     deliveryDate: Date
   where
     signatory seller
@@ -523,7 +551,8 @@ template PickUpRequest
     transportCompany: Party
     transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
-    paymentRequestCid: ContractId PaymentRequest
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
   where
     signatory transportCompany
     observer warehouse
@@ -535,22 +564,36 @@ template PickUpRequest
           assertMsg "aaa" $ lockedInventoryItem.productName == productName
           assertMsg "bbb" $ lockedInventoryItem.quantity >= quantity
           archive lockedInventoryItemCid
-          create Delivery with ..
+          create Delivery with
+            warehousePaymentRequestCid = lockedInventoryItem.warehousePaymentRequestCid, ..
 
+-- Request for a payment from the payee.
 template PaymentRequest
   with
-    quoteId: ContractId QuoteRequest
-    buyer: Party
-    seller: Party
+    payer: Party
+    payee: Party
     price: Decimal
   where
-    signatory seller
-    observer buyer
+    signatory payee
+    observer payer
 
-    controller buyer can
-      PaymentRequest_Pay: ()
-        do return ()
+    controller payer can
+      PaymentRequest_Pay: ContractId PaymentObligation
+        do
+          create PaymentObligation with ..
 
+-- Represents the payers obligation to pay the specified price to the payee (off-ledger)
+template PaymentObligation
+  with
+    payer: Party
+    payee: Party
+    price: Decimal
+  where
+    signatory payer, payee
+    agreement show payer <> " agrees to pay " <> show price <> " currency units to " <> show payee
+
+-- The Delivery contract is a notification for the buyer that an item is
+-- transported to the destination and it can start the payment for it.
 template Delivery
   with
     quoteId: ContractId QuoteRequest
@@ -561,42 +604,80 @@ template Delivery
     warehouse: Party
     transportCompany: Party
     transportCapacityLockCid: ContractId LockedTransportCapacity
-    paymentRequestCid: ContractId PaymentRequest
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
   where
     signatory warehouse, transportCompany
     observer buyer
 
     controller buyer can
-      Delivery_Pay: ContractId DeliveryAck
+      Delivery_Acknowledge: ContractId DeliveryComplete
         do
-          ack <- create DeliveryAck with ..
-          exercise paymentRequestCid PaymentRequest_Pay
-          return ack
+          -- Payment must happen in a choice which is not visible to warehouse and transportCompany
+          create DeliveryComplete with ..
 
-template DeliveryAck
+-- Template to indicate that the delivery was acknowledged and the seller can start the payouts.
+template DeliveryComplete
   with
     quoteId: ContractId QuoteRequest
     buyer: Party
+    seller: Party
     transportCompany: Party
     transportCapacityLockCid: ContractId LockedTransportCapacity
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
   where
     signatory buyer
-    observer transportCompany
+    observer seller
 
-    controller transportCompany can
-      DeliveryAck_ReleaseCapacity: ContractId TransportCapacityReleaseTrigger
+    controller seller can
+      DeliveryComplete_Accept: ContractId DeliveryPayment
         do
-          create TransportCapacityReleaseTrigger with ..
+          obligation <- exercise buyerPaymentRequestCid PaymentRequest_Pay
+          supplierPaymentRequest <- fetch supplierPaymentRequestCid
+          let supplier = supplierPaymentRequest.payee
+          -- Payments to the warehouse and transportCompany should not be visible to buyer
+          create DeliveryPayment with ..
 
-template TransportCapacityReleaseTrigger
+-- Facilitates to create the payment obligations of the seller.
+-- This contract is not visible to buyer, therefore payment to supplier can happen
+template DeliveryPayment
   with
     quoteId: ContractId QuoteRequest
+    supplier: Party
+    seller: Party
     transportCompany: Party
     transportCapacityLockCid: ContractId LockedTransportCapacity
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
   where
-    signatory transportCompany
+    signatory seller
 
-    controller transportCompany can
-      TransportCapacityReleaseTrigger_Release: ()
+    controller supplier can
+      DeliveryPayment_Accept: (ContractId DeliverySupplierPayment, ContractId PaymentObligation)
         do
-          archive transportCapacityLockCid
+          so <- exercise supplierPaymentRequestCid PaymentRequest_Pay
+          payment <- create DeliverySupplierPayment with ..
+          return (payment, so)
+
+-- Facilitates to create the payment obligations of the supplier.
+-- This contract is not visible to seller, therefore payment to warehouse can happen
+template DeliverySupplierPayment
+  with
+    quoteId: ContractId QuoteRequest
+    supplier: Party
+    transportCompany: Party
+    transportCapacityLockCid: ContractId LockedTransportCapacity
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory supplier
+
+    controller supplier can
+      DeliverySupplierPayment_Pay: (ContractId PaymentObligation, ContractId PaymentObligation)
+        do
+          wo <- exercise warehousePaymentRequestCid PaymentRequest_Pay
+          to <- exercise transportCapacityLockCid LockedTransportCapacity_ReleaseAndPay
+          return (wo, to)

@@ -21,14 +21,14 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Test;
 import org.pcollections.HashTreePMap;
 
-public class TransportCapacityReleaseBotTest {
+public class DeliveryCompleteBotTest {
 
   private static final String PARTY = "TESTPARTY";
 
   CommandsAndPendingSetBuilder.Factory commandBuilder =
       CommandsAndPendingSetBuilder.factory("appId", Clock::systemUTC, Duration.ofSeconds(5));
   private LedgerViewFlowable.LedgerTestView<Template> ledgerView;
-  private TransportCapacityReleaseBot bot = new TransportCapacityReleaseBot(commandBuilder, PARTY);
+  private DeliveryCompleteBot bot = new DeliveryCompleteBot(commandBuilder, PARTY);
 
   @Test
   public void calculateCommands() throws InvocationTargetException, IllegalAccessException {
@@ -36,22 +36,26 @@ public class TransportCapacityReleaseBotTest {
         new LedgerViewFlowable.LedgerTestView(
             HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty());
 
-    LockedTransportCapacity.ContractId lockedCap1 =
-        new LockedTransportCapacity.ContractId("cid-01");
-    LockedTransportCapacity.ContractId lockedCap2 =
-        new LockedTransportCapacity.ContractId("cid-02");
+    LockedTransportCapacity.ContractId lockedCap1 = new LockedTransportCapacity.ContractId("cid-01");
+    LockedTransportCapacity.ContractId lockedCap2 = new LockedTransportCapacity.ContractId("cid-02");
+    PaymentRequest.ContractId buyerPayReq1 = new PaymentRequest.ContractId("cid-03");
+    PaymentRequest.ContractId buyerPayReq2 = new PaymentRequest.ContractId("cid-04");
+    PaymentRequest.ContractId warehousePayReq1 = new PaymentRequest.ContractId("cid-05");
+    PaymentRequest.ContractId warehousePayReq2 = new PaymentRequest.ContractId("cid-06");
+    PaymentRequest.ContractId supplierPayReq1 = new PaymentRequest.ContractId("cid-07");
+    PaymentRequest.ContractId supplierPayReq2 = new PaymentRequest.ContractId("cid-08");
 
     QuoteRequest.ContractId quoteId = new QuoteRequest.ContractId("Q1");
 
-    TransportCapacityReleaseTrigger tCrT1 =
-        new TransportCapacityReleaseTrigger(quoteId, "transportCompany", lockedCap1);
-    TransportCapacityReleaseTrigger tCrT2 =
-        new TransportCapacityReleaseTrigger(quoteId, "transportCompany", lockedCap2);
+    DeliveryComplete tCrT1 =
+        new DeliveryComplete(quoteId,"buyer", "seller", "transportCompany", lockedCap1, buyerPayReq1, supplierPayReq1, warehousePayReq1);
+    DeliveryComplete tCrT2 =
+        new DeliveryComplete(quoteId, "buyer", "seller", "transportCompany", lockedCap2, buyerPayReq2, supplierPayReq2, warehousePayReq2);
 
     ledgerView =
         ledgerView
-            .addActiveContract(TransportCapacityReleaseTrigger.TEMPLATE_ID, "cid-03", tCrT1)
-            .addActiveContract(TransportCapacityReleaseTrigger.TEMPLATE_ID, "cid-04", tCrT2);
+            .addActiveContract(DeliveryComplete.TEMPLATE_ID, "cid-03", tCrT1)
+            .addActiveContract(DeliveryComplete.TEMPLATE_ID, "cid-04", tCrT2);
 
     CommandsAndPendingSet cmds = bot.calculateCommands(ledgerView).blockingFirst();
 
@@ -62,7 +66,7 @@ public class TransportCapacityReleaseBotTest {
           Optional<ExerciseCommand> exerciseCommand = cmd.asExerciseCommand();
           assertTrue(exerciseCommand.isPresent());
           assertEquals(
-              "TransportCapacityReleaseTrigger_Release", exerciseCommand.get().getChoice());
+              "DeliveryComplete_Accept", exerciseCommand.get().getChoice());
         });
   }
 }

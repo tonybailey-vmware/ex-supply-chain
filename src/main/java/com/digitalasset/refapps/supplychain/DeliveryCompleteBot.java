@@ -12,30 +12,30 @@ import com.daml.ledger.rxjava.components.helpers.CreatedContract;
 import com.digitalasset.refapps.supplychain.util.BotLogger;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import com.google.common.collect.Sets;
-import da.refapps.supplychain.main.TransportCapacityReleaseTrigger;
+import da.refapps.supplychain.main.DeliveryComplete;
 import io.reactivex.Flowable;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 
-public class TransportCapacityReleaseBot {
+public class DeliveryCompleteBot {
 
   private final Logger logger;
   private final CommandsAndPendingSetBuilder commandBuilder;
 
   public final TransactionFilter transactionFilter;
 
-  public TransportCapacityReleaseBot(
+  public DeliveryCompleteBot(
       CommandsAndPendingSetBuilder.Factory commandBuilderFactory, String partyName) {
     String workflowId =
-        "WORKFLOW-" + partyName + "-TransportCapacityReleaseBot-" + UUID.randomUUID().toString();
-    logger = BotLogger.getLogger(TransportCapacityReleaseBot.class, workflowId);
+        "WORKFLOW-" + partyName + "-DeliveryCompleteBot-" + UUID.randomUUID().toString();
+    logger = BotLogger.getLogger(DeliveryCompleteBot.class, workflowId);
 
     commandBuilder = commandBuilderFactory.create(partyName, workflowId);
 
     Filter messageFilter =
-        new InclusiveFilter(Sets.newHashSet(TransportCapacityReleaseTrigger.TEMPLATE_ID));
+        new InclusiveFilter(Sets.newHashSet(DeliveryComplete.TEMPLATE_ID));
 
     this.transactionFilter = new FiltersByParty(Collections.singletonMap(partyName, messageFilter));
 
@@ -47,16 +47,16 @@ public class TransportCapacityReleaseBot {
 
     CommandsAndPendingSetBuilder.Builder builder = commandBuilder.newBuilder();
 
-    Map<String, TransportCapacityReleaseTrigger> aggregatedQuoteBotTriggers =
+    Map<String, DeliveryComplete> deliveryCompleteContracts =
         filterTemplates(
-            TransportCapacityReleaseTrigger.class,
-            ledgerView.getContracts(TransportCapacityReleaseTrigger.TEMPLATE_ID));
+                DeliveryComplete.class,
+            ledgerView.getContracts(DeliveryComplete.TEMPLATE_ID));
 
-    for (Map.Entry<String, TransportCapacityReleaseTrigger> e :
-        aggregatedQuoteBotTriggers.entrySet()) {
+    for (Map.Entry<String, DeliveryComplete> e :
+            deliveryCompleteContracts.entrySet()) {
       builder.addCommand(
-          new TransportCapacityReleaseTrigger.ContractId(e.getKey())
-              .exerciseTransportCapacityReleaseTrigger_Release());
+          new DeliveryComplete.ContractId(e.getKey())
+              .exerciseDeliveryComplete_Accept());
     }
 
     return builder
@@ -66,11 +66,11 @@ public class TransportCapacityReleaseBot {
 
   public Template getContractInfo(CreatedContract createdContract) {
     Record args = createdContract.getCreateArguments();
-    if (createdContract.getTemplateId().equals(TransportCapacityReleaseTrigger.TEMPLATE_ID)) {
-      return TransportCapacityReleaseTrigger.fromValue(args);
+    if (createdContract.getTemplateId().equals(DeliveryComplete.TEMPLATE_ID)) {
+      return DeliveryComplete.fromValue(args);
     } else {
       String msg =
-          "TransportCapacityReleaseBot encountered an unknown contract of type "
+          "DeliveryCompleteBot encountered an unknown contract of type "
               + createdContract.getTemplateId();
       logger.error(msg);
       throw new IllegalStateException(msg);

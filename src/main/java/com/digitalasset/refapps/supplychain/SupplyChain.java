@@ -67,18 +67,12 @@ public class SupplyChain {
             chooseTransportBot::calculateCommands,
             chooseTransportBot::getContractInfo);
 
-    TransportCapacityReleaseBot transportCapacityReleaseBot1 = new TransportCapacityReleaseBot(commandBuilderFactory, TRANSPORT_PARTY1);
+    DeliveryCompleteBot transportCapacityReleaseBot = new DeliveryCompleteBot(commandBuilderFactory, SELLER_PARTY);
     Bot.wire(APPLICATION_ID,
             client,
-            transportCapacityReleaseBot1.transactionFilter,
-            transportCapacityReleaseBot1::calculateCommands,
-            transportCapacityReleaseBot1::getContractInfo);
-    TransportCapacityReleaseBot transportCapacityReleaseBot2 = new TransportCapacityReleaseBot(commandBuilderFactory, TRANSPORT_PARTY2);
-    Bot.wire(APPLICATION_ID,
-            client,
-            transportCapacityReleaseBot2.transactionFilter,
-            transportCapacityReleaseBot2::calculateCommands,
-            transportCapacityReleaseBot2::getContractInfo);
+            transportCapacityReleaseBot.transactionFilter,
+            transportCapacityReleaseBot::calculateCommands,
+            transportCapacityReleaseBot::getContractInfo);
   }
 
   public static void waitForSandbox(CliOptions options, DamlLedgerClient client) {
