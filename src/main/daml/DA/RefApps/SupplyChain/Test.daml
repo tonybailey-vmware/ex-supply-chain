@@ -1,11 +1,68 @@
 daml 1.2
 module DA.RefApps.SupplyChain.Test where
 
+import DA.List
+import DA.Assert
+
 import DA.RefApps.SupplyChain.Scenarios
 import DA.RefApps.SupplyChain.Main
 import DA.RefApps.SupplyChain.Types
 
-deliv = scenario do
+lockedTransportCapacityHelper (quoteId: ContractId QuoteRequest) (productName: Text) (delivery: Date) = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+
+  transportPayReq <- submit transportComp1 do
+    create PaymentRequest with
+      payer = supplier
+      payee = transportComp1
+      price = 0.1
+
+  lockTrans <- submit transportComp1 do
+    create LockedTransportCapacity with
+      quoteId = quoteId
+      transportCompany = transportComp1
+      supplier = supplier
+      deliveryDate = delivery
+      item = (WarehouseAllocation productName warehouse1 55)
+      transportPaymentRequestCid = transportPayReq
+
+  return (transportPayReq, lockTrans)
+
+lockedInventoryItemHelper (quoteId: ContractId QuoteRequest) (productName: Text) = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+
+  warehousePayReq <- submit warehouse1 do
+    create PaymentRequest with
+      payer = supplier
+      payee = warehouse1
+      price = 9.8
+
+  lockedInv <- submit warehouse1 do
+    create LockedInventoryItem with
+      quoteId = quoteId
+      warehouse = warehouse1
+      supplier = supplier
+      productName = productName
+      quantity = 1
+      unitPrice = 1.0
+      warehousePaymentRequestCid = warehousePayReq
+
+  return (warehousePayReq, lockedInv)
+
+
+marginTest = scenario do
   buyer <- getParty "Buyer"
   seller <- getParty "Seller"
   supplier <- getParty "Supplier"
@@ -19,21 +76,81 @@ deliv = scenario do
     exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
                         products = [setupData.product01]
 
+  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper quoteReq setupData.product01.productName setupData.product01.deliveryFrom
+  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper quoteReq setupData.product01.productName
 
-  transportPayReq <- submit transportComp1 do
+  supplierPayReq <- submit supplier do
     create PaymentRequest with
-      payer = supplier
-      payee = transportComp1
-      price = 0.1
+      payer = seller
+      payee = supplier
+      price = 11.1
 
-  lockTrans <- submit transportComp1 do
-    create LockedTransportCapacity with
+  let
+    wAllocation1 = WarehouseAllocation setupData.product01.productName warehouse1 44
+    wAllocation2 = WarehouseAllocation setupData.product01.productName warehouse2 22
+    transportedWAllocation1 = TransportedWarehouseAllocation wAllocation1 transportComp1 setupData.product01.deliveryFrom
+    transportedWAllocation2 = TransportedWarehouseAllocation wAllocation2 transportComp2 setupData.product01.deliveryFrom
+    deliveryPlanItem1 = DeliveryPlanItem transportedWAllocation1 lockTrans lockedInv supplierPayReq
+    deliveryPlanItem2 = DeliveryPlanItem transportedWAllocation2 lockTrans lockedInv supplierPayReq
+    pricedWAllocation1 = PricedWarehouseAllocation wAllocation1 11.1
+    pricedWAllocation2 = PricedWarehouseAllocation wAllocation2 23.0
+
+  plan <- submit supplier do
+    create DeliveryPlan with
       quoteId = quoteReq
-      transportCompany = transportComp1
       supplier = supplier
-      deliveryDate = setupData.product01.deliveryFrom
-      item = (WarehouseAllocation setupData.product01.productName warehouse1 55)
-      transportPaymentRequestCid = transportPayReq
+      buyer = buyer
+      seller = seller
+      items = [deliveryPlanItem1, deliveryPlanItem2]
+
+  aggregated <- submit seller do
+    create AggregatedQuote with
+      quoteId = quoteReq
+      supplier = supplier
+      buyer = buyer
+      seller = seller
+      items = [pricedWAllocation1, pricedWAllocation2]
+      deliveryPlanCid = plan
+
+  (quoteCid, deliveryPlanCid) <- submit seller do
+    exercise aggregated $ AggregatedQuote_AddMargin 0.1
+
+  quote <- submit seller do fetch quoteCid
+  quote.totalPrice === (11.1 * 1.1) + (23.0 * 1.1)
+  (length quote.items) === 2
+  let firstItem = head quote.items
+  assertMsg "Product name is wrong" $ all (\i -> i.allocation.productName == setupData.product01.productName) quote.items
+  firstItem.price === (11.1 * 1.1)
+
+  let secondItem = head (tail quote.items)
+  secondItem.price === (23.0 * 1.1)
+
+  deliveryPlan <- submit seller do fetch deliveryPlanCid
+  (length quote.items) === 2
+  assertMsg "Product name is wrong" $ all (\i -> i.allocation.allocation.productName == setupData.product01.productName) deliveryPlan.items
+  let firstDeliv = head deliveryPlan.items
+  firstSupplierPayReq <- submit supplier do fetch firstDeliv.supplierPaymentRequestCid
+  firstSupplierPayReq.price === 11.1
+  buyerPaymentRequest <- submit buyer do fetch firstDeliv.buyerPaymentRequestCid
+  buyerPaymentRequest.price === 11.1 * 1.1
+
+  return ()
+
+paymentTest = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+  setupData <- setup
+
+  quoteReq <- submit buyer do
+    exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
+                        products = [setupData.product01]
+
+  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper quoteReq setupData.product01.productName setupData.product01.deliveryFrom
 
   buyerPayReq <- submit seller do
     create PaymentRequest with
@@ -41,21 +158,7 @@ deliv = scenario do
       payee = seller
       price = 11.1
 
-  warehousePayReq <- submit warehouse1 do
-    create PaymentRequest with
-      payer = supplier
-      payee = warehouse1
-      price = 9.8
-
-  lockedInv <- submit warehouse1 do
-    create LockedInventoryItem with
-      quoteId = quoteReq
-      warehouse = warehouse1
-      supplier = supplier
-      productName = setupData.product01.productName
-      quantity = 1
-      unitPrice = 1.0
-      warehousePaymentRequestCid = warehousePayReq
+  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper quoteReq setupData.product01.productName
 
   supplierPayReq <- submit supplier do
     create PaymentRequest with

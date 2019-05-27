@@ -7,6 +7,7 @@ module DA.RefApps.SupplyChain.Main where
 
 import DA.List
 import DA.Date
+import DA.Optional
 
 import DA.RefApps.SupplyChain.Types
 
@@ -369,7 +370,7 @@ template AggregatedQuotePending
               payer = seller
               payee = supplier
               price = price
-            return $ DeliveryPlanItem alloc ltc lii supplierPayment alloc.deliveryDate)
+            return $ DeliveryPlanItem alloc ltc lii supplierPayment)
           let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items --TODO: fix price (quantity * unitPrice)
           deliveryPlanCid <- create DeliveryPlan with
             items = deliveryItems, ..
@@ -393,6 +394,7 @@ template AggregatedQuoteTrigger
           create AggregatedQuote with ..
 
 
+-- Aggregated quote ready for sending to buyer and adding the margin before that
 template AggregatedQuote
   with
     quoteId: ContractId QuoteRequest
@@ -404,15 +406,22 @@ template AggregatedQuote
   where
     signatory seller
     controller seller can
-      AggregatedQuote_AddMargin: ContractId Quote
+      AggregatedQuote_AddMargin: (ContractId Quote, ContractId DeliveryAndPaymentPlan)
         with
-          margin: Int
+          margin: Decimal
         do
-          let itemsWithMargin = items -- TODO Add price and margin
+          let itemsWithMargin = map (\i -> i with price = i.price * (1.0 + margin)) items
+          let totalPrice = foldl (\price i -> price + i.price) 0.0 itemsWithMargin
           deliveryPlan <- fetch deliveryPlanCid
           deliveryItems <- forA deliveryPlan.items (\item -> do
+              let pricedItemOpt = find
+                    (\i -> i.allocation.productName == item.allocation.allocation.productName && i.allocation.warehouse == item.allocation.allocation.warehouse)
+                    itemsWithMargin
+              assertMsg ("Corresponding quote item not found for " <> item.allocation.allocation.productName) $ isSome pricedItemOpt
+              let pricedItem = fromSome pricedItemOpt
+
               req <- create PaymentRequest with
-                price = (head itemsWithMargin).price --FIXME
+                price = pricedItem.price
                 payer = buyer
                 payee = seller
               return DeliveryAndPaymentPlanItem with
@@ -420,14 +429,13 @@ template AggregatedQuote
                 transportCapacityLockCid = item.transportCapacityLockCid
                 buyerPaymentRequestCid = req
                 supplierPaymentRequestCid = item.supplierPaymentRequestCid
-                deliveryDate = item.deliveryDate
                 lockedInventoryItemCid = item.lockedInventoryItemCid
             )
           deliveryPlanCid <- create DeliveryAndPaymentPlan with
             items = deliveryItems, ..
-          create Quote with
+          quote <- create Quote with
                   items = itemsWithMargin, ..
-                  -- TODO Actual items on quote should be (Product - Price - Quantity) /not aggregated/
+          return (quote, deliveryPlanCid)
 
 
 data DeliveryPlanItem = DeliveryPlanItem with
@@ -435,7 +443,6 @@ data DeliveryPlanItem = DeliveryPlanItem with
     transportCapacityLockCid: ContractId LockedTransportCapacity
     lockedInventoryItemCid: ContractId LockedInventoryItem
     supplierPaymentRequestCid: ContractId PaymentRequest
-    deliveryDate: Date
   deriving (Eq, Show)
 
 template DeliveryPlan
@@ -455,7 +462,6 @@ data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
     lockedInventoryItemCid: ContractId LockedInventoryItem
     buyerPaymentRequestCid: ContractId PaymentRequest
     supplierPaymentRequestCid: ContractId PaymentRequest
-    deliveryDate: Date
   deriving (Eq, Show)
 
 template DeliveryAndPaymentPlan
@@ -480,7 +486,7 @@ template DeliveryAndPaymentPlan
               lockedInventoryItemCid = item.lockedInventoryItemCid
               buyerPaymentRequestCid = item.buyerPaymentRequestCid
               supplierPaymentRequestCid = item.supplierPaymentRequestCid
-              deliveryDate = item.deliveryDate, ..
+              deliveryDate = item.allocation.deliveryDate, ..
             )
 
 template Quote
@@ -490,7 +496,7 @@ template Quote
     buyer: Party
     deliveryPlanCid: ContractId DeliveryAndPaymentPlan
     items: [PricedWarehouseAllocation] -- TODO add Address!! down from TransportQuoteRequest
-    --TODO: do we need the grandtotal?
+    totalPrice: Decimal
   where
     signatory seller
     observer buyer
