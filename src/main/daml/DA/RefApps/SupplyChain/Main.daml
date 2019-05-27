@@ -5,6 +5,7 @@
 daml 1.2
 module DA.RefApps.SupplyChain.Main where
 
+import DA.Action
 import DA.List
 import DA.Date
 import DA.Optional
@@ -283,7 +284,7 @@ template TransportQuote
           quantity: Int
         do
           transportPaymentRequestCid <- create PaymentRequest with
-                price = (snd item).price * intToDecimal (snd item).transportableQuantity / (intToDecimal quantity)
+                price = (snd item).price * (intToDecimal quantity) / intToDecimal (snd item).transportableQuantity
                 payer = supplier
                 payee = transportCompany
           create LockedTransportCapacity with
@@ -325,21 +326,35 @@ template ChooseTransportBotTrigger
           inventoryQuoteCids: [ContractId InventoryQuote]
           inventoryItemCids: [ContractId InventoryItem]
         do
-          proportionalQuotes <- bestPriceDelivery transportQuoteCids inventoryQuoteCids items inventoryItemCids
-          items <- forA proportionalQuotes (\pq -> do
+          proportionalQuotes <- bestPriceDelivery transportQuoteCids inventoryQuoteCids items
+          inventoryItems <- forA inventoryItemCids fetch
+          let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
+          locks <- foldlA (\ summedLocks pq -> do
               transportQuote <- fetch pq.transportQuoteCid
+              let inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == (fst transportQuote.item).productName) summedLocks.liveInventoryItems
               lockedTransportCapacity <- exercise pq.transportQuoteCid TransportQuote_Lock with quantity = pq.quantity
-              lockedInventoryItems <- exercise pq.inventoryItemCid InventoryItem_SplitAndLock with
+              let inventoryItemCid = snd inventoryItemWithCid
+              (newInventoryCid, lockedInventoryCid) <- exercise inventoryItemCid $ InventoryItem_SplitAndLock with
                 quantityToLock = pq.quantity
                 quoteRequestId = quoteId
+              newInventory <- fetch newInventoryCid
               let allocation = TransportedWarehouseAllocation with allocation = pq.allocation.allocation;  transportCompany = transportQuote.transportCompany; deliveryDate = (snd transportQuote.item).deliveryDate
-              return ((allocation, (snd transportQuote.item).price), lockedTransportCapacity, snd lockedInventoryItems))
+                  prevLiveInventoriesWithoutArchived = filter (\inventoryItemWithCid -> (snd inventoryItemWithCid) /= inventoryItemCid) summedLocks.liveInventoryItems
+                  updatedInventories = (newInventory, newInventoryCid) :: prevLiveInventoriesWithoutArchived
+              return SummedLocks with liveInventoryItems = updatedInventories; locksSoFar = [((allocation, (snd transportQuote.item).price), lockedTransportCapacity, lockedInventoryCid)] ++ summedLocks.locksSoFar
+              ) (SummedLocks with liveInventoryItems = inventoryItemsWithCid; locksSoFar = []) proportionalQuotes
           create AggregatedQuotePending with
             quoteId = quoteId
             supplier = supplier
             buyer = buyer
             seller = seller
-            items = items
+            items = locks.locksSoFar
+
+data SummedLocks =
+  SummedLocks {
+    liveInventoryItems: [(InventoryItem, ContractId InventoryItem)];
+    locksSoFar: [(TransportedWarehouseAllocationWithPrice, ContractId LockedTransportCapacity, ContractId LockedInventoryItem)]
+  } deriving (Eq, Show)
 
 
 template LockedTransportCapacity
@@ -711,7 +726,6 @@ data CombinedQuote =
     combinedUnitPrice: Decimal;
     transportQuoteCid: ContractId TransportQuote;
     inventoryQuoteCid: ContractId InventoryQuote;
-    inventoryItemCid: ContractId InventoryItem;
     allocation: WarehouseAllocationWithDates
   } deriving (Eq, Show)
 
@@ -720,23 +734,19 @@ data ProportionalQuote =
     quantity: Int;
     transportQuoteCid: ContractId TransportQuote;
     inventoryQuoteCid: ContractId InventoryQuote;
-    inventoryItemCid: ContractId InventoryItem;
     allocation: WarehouseAllocationWithDates
   } deriving (Eq, Show)
 
 bestPriceDelivery: [ContractId TransportQuote] ->
                   [ContractId InventoryQuote] ->
-                  [WarehouseAllocationWithDates] ->
-                  [ContractId InventoryItem] ->
+                  [WarehouseAllocationWithDates]->
                   Update [ProportionalQuote]
-bestPriceDelivery transportQuoteCids inventoryQuoteCids itemsToDeliver inventoryItemCids =
+bestPriceDelivery transportQuoteCids inventoryQuoteCids itemsToDeliver =
   do
     transportQuotes <- forA transportQuoteCids fetch
     let transportQuotesWithCid = zip transportQuotes transportQuoteCids
     inventoryQuotes <- forA inventoryQuoteCids fetch
     let inventoryQuotesWithCid = zip inventoryQuotes inventoryQuoteCids
-    inventoryItems <- forA inventoryItemCids fetch
-    let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
     let bestQuotes = map (\item  ->
           let productName = item.allocation.productName
               transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
@@ -754,9 +764,7 @@ bestPriceDelivery transportQuoteCids inventoryQuoteCids itemsToDeliver inventory
                               maxDeliveredQuantity = min warehouseQuantity transportQuantity
                               warehouseUnitPrice = inventoryQuote.price / (intToDecimal warehouseQuantity)
                               combinedUnitPrice = warehouseUnitPrice + transportUnitPrice
-                              inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == productName) inventoryItemsWithCid
-                              inventoryItemCid = snd inventoryItemWithCid
-                          in CombinedQuote with maxDeliveredQuantity; combinedUnitPrice; transportQuoteCid; inventoryQuoteCid; inventoryItemCid; allocation = item
+                          in CombinedQuote with maxDeliveredQuantity; combinedUnitPrice; transportQuoteCid; inventoryQuoteCid; allocation = item
                           ) matchingInventoryQuote
                   in optionalToList combinedQuote
                   ) transportQuotesForProduct
@@ -780,8 +788,8 @@ bestQuotesForQuantity quantity combinedQuotes =
           let missing = quantity - summedQuotes.sumSoFar
               toBeAdded = min missing actQuote.maxDeliveredQuantity
               quotes = summedQuotes.quotesSoFar
-              newQuote = ProportionalQuote with quantity = toBeAdded; transportQuoteCid = actQuote.transportQuoteCid; inventoryQuoteCid = actQuote.inventoryQuoteCid; inventoryItemCid = actQuote.inventoryItemCid; allocation = actQuote.allocation
-              newQuotes = if (missing > 0) then [newQuote] ++ quotes else quotes
+              newQuote = ProportionalQuote with quantity = toBeAdded; transportQuoteCid = actQuote.transportQuoteCid; inventoryQuoteCid = actQuote.inventoryQuoteCid; allocation = actQuote.allocation
+              newQuotes = if (missing > 0) then newQuote :: quotes else quotes
               next = SummedQuotes with sumSoFar = toBeAdded + summedQuotes.sumSoFar; quotesSoFar = newQuotes
           in next
           ) (SummedQuotes with sumSoFar = 0; quotesSoFar = []) sortedQuotes
