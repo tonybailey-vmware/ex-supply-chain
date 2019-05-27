@@ -137,11 +137,9 @@ template InventoryItem
     controller supplier can
       InventoryItem_SplitAndLock: (ContractId InventoryItem, ContractId LockedInventoryItem)
         with
-          reservation: ContractId InventoryQuote
-          quantitiesToLock: [Int]
-          quoteId: ContractId QuoteRequest
+          quantityToLock: Int
+          quoteRequestId: ContractId QuoteRequest
         do
-          let quantityToLock = head quantitiesToLock -- TODO: cycle instead
           let remainingQuantity = quantity - quantityToLock
           assertMsg "Non-positive remaining quantity." $ remainingQuantity > 0
 
@@ -152,12 +150,12 @@ template InventoryItem
             payee = warehouse
             price = unitPrice * intToDecimal quantityToLock
 
-          locked <- create LockedInventoryItem with quantity = head quantitiesToLock, .. --TODO
+          locked <- create LockedInventoryItem with quantity = quantityToLock, .. --TODO
           return (this2, locked)
 
 template LockedInventoryItem
   with
-    quoteId: ContractId QuoteRequest
+    quoteRequestId: ContractId QuoteRequest
     warehouse: Party
     supplier: Party
     productName: Text
@@ -280,11 +278,21 @@ template TransportQuote
     signatory supplier, transportCompany
 
     controller supplier can
-      TransportQuote_Lock: () --ContractId LockedTransportCapacity
+      TransportQuote_Lock: ContractId LockedTransportCapacity
         with
-          quantities: [Int]
+          quantity: Int
         do
-          return ()
+          transportPaymentRequestCid <- create PaymentRequest with
+                price = (snd item).price * intToDecimal (snd item).transportableQuantity / (intToDecimal quantity)
+                payer = supplier
+                payee = transportCompany
+          create LockedTransportCapacity with
+                quoteId = quoteId
+                transportCompany = transportCompany
+                supplier = supplier
+                item = fst item
+                deliveryDate = (snd item).deliveryDate
+                transportPaymentRequestCid = transportPaymentRequestCid
 
 template TransportQuoteRequestPending
   with
@@ -311,27 +319,28 @@ template ChooseTransportBotTrigger
   where
     signatory supplier
     controller supplier can
-      ChooseTransportBotTrigger_Proceed: (ContractId AggregatedQuotePending, [ContractId LockedTransportCapacity], [ContractId LockedInventoryItem])
+      ChooseTransportBotTrigger_Proceed: ContractId AggregatedQuotePending
         with
-          quoteCids: [ContractId TransportQuote]
-          reservedInventoryItemCids: [ContractId InventoryQuote]
+          transportQuoteCids: [ContractId TransportQuote]
+          inventoryQuoteCids: [ContractId InventoryQuote]
           inventoryItemCids: [ContractId InventoryItem]
         do
-          -- do the calculation here, which is the best transport quote?
-          let bestQuoteCid = head quoteCids
-          bestQuote <- fetch bestQuoteCid
-          -- lockReq <- create TransportCapacityLockRequest with
-          --         transportCompany = bestQuote.transportCompany
-          --         supplier = bestQuote.supplier
-          --         item = (head items).allocation -- TODO fill out
-          --         deliveryDate = (head items).deliveryFrom -- TODO
+          proportionalQuotes <- bestPriceDelivery transportQuoteCids inventoryQuoteCids items inventoryItemCids
+          items <- forA proportionalQuotes (\pq -> do
+              transportQuote <- fetch pq.transportQuoteCid
+              lockedTransportCapacity <- exercise pq.transportQuoteCid TransportQuote_Lock with quantity = pq.quantity
+              lockedInventoryItems <- exercise pq.inventoryItemCid InventoryItem_SplitAndLock with
+                quantityToLock = pq.quantity
+                quoteRequestId = quoteId
+              let allocation = TransportedWarehouseAllocation with allocation = pq.allocation.allocation;  transportCompany = transportQuote.transportCompany; deliveryDate = (snd transportQuote.item).deliveryDate
+              return ((allocation, (snd transportQuote.item).price), lockedTransportCapacity, snd lockedInventoryItems))
+          create AggregatedQuotePending with
+            quoteId = quoteId
+            supplier = supplier
+            buyer = buyer
+            seller = seller
+            items = items
 
-          let price = (snd bestQuote.item).price --TODO: proper map
-          let deliveryDate = (snd bestQuote.item).deliveryDate  --TODO: proper map
-          let deliveryItems = map (\item -> (TransportedWarehouseAllocation item.allocation bestQuote.transportCompany deliveryDate, price)) items --TODO calculate prices based on quantity
-          aggregated <- create AggregatedQuotePending with
-                  items = zip3 deliveryItems [] [], ..
-          return (aggregated, [], [])
 
 template LockedTransportCapacity
   with
@@ -687,3 +696,93 @@ template DeliverySupplierPayment
           wo <- exercise warehousePaymentRequestCid PaymentRequest_Pay
           to <- exercise transportCapacityLockCid LockedTransportCapacity_ReleaseAndPay
           return (wo, to)
+
+data CalculationResult =
+  CalculationResult {
+    productName: Text;
+    quantity: Int;
+    warehouse: Party;
+    transportCompany: Party
+  } deriving (Eq, Show)
+
+data CombinedQuote =
+  CombinedQuote {
+    maxDeliveredQuantity: Int;
+    combinedUnitPrice: Decimal;
+    transportQuoteCid: ContractId TransportQuote;
+    inventoryQuoteCid: ContractId InventoryQuote;
+    inventoryItemCid: ContractId InventoryItem;
+    allocation: WarehouseAllocationWithDates
+  } deriving (Eq, Show)
+
+data ProportionalQuote =
+  ProportionalQuote {
+    quantity: Int;
+    transportQuoteCid: ContractId TransportQuote;
+    inventoryQuoteCid: ContractId InventoryQuote;
+    inventoryItemCid: ContractId InventoryItem;
+    allocation: WarehouseAllocationWithDates
+  } deriving (Eq, Show)
+
+bestPriceDelivery: [ContractId TransportQuote] ->
+                  [ContractId InventoryQuote] ->
+                  [WarehouseAllocationWithDates] ->
+                  [ContractId InventoryItem] ->
+                  Update [ProportionalQuote]
+bestPriceDelivery transportQuoteCids inventoryQuoteCids itemsToDeliver inventoryItemCids =
+  do
+    transportQuotes <- forA transportQuoteCids fetch
+    let transportQuotesWithCid = zip transportQuotes transportQuoteCids
+    inventoryQuotes <- forA inventoryQuoteCids fetch
+    let inventoryQuotesWithCid = zip inventoryQuotes inventoryQuoteCids
+    inventoryItems <- forA inventoryItemCids fetch
+    let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
+    let bestQuotes = map (\item  ->
+          let productName = item.allocation.productName
+              transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
+              combinedQuotes = map (\transportQuoteWithCid ->
+                  let transportQuoteCid = snd transportQuoteWithCid
+                      transportQuote = fst transportQuoteWithCid
+                      transportQuantity = (snd transportQuote.item).transportableQuantity
+                      transportUnitPrice = (snd transportQuote.item).price / (intToDecimal transportQuantity)
+                      matchingInventoryQuote = listToOptional $ filter (\quoteWithCid -> (fst quoteWithCid).productName == productName && (fst quoteWithCid).warehouse == (fst transportQuote.item).warehouse) inventoryQuotesWithCid
+
+                      combinedQuote = fmap (\ inventoryQuoteWithCid ->
+                          let inventoryQuoteCid = snd inventoryQuoteWithCid
+                              inventoryQuote = fst inventoryQuoteWithCid
+                              warehouseQuantity = inventoryQuote.quantity
+                              maxDeliveredQuantity = min warehouseQuantity transportQuantity
+                              warehouseUnitPrice = inventoryQuote.price / (intToDecimal warehouseQuantity)
+                              combinedUnitPrice = warehouseUnitPrice + transportUnitPrice
+                              inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == productName) inventoryItemsWithCid
+                              inventoryItemCid = snd inventoryItemWithCid
+                          in CombinedQuote with maxDeliveredQuantity; combinedUnitPrice; transportQuoteCid; inventoryQuoteCid; inventoryItemCid; allocation = item
+                          ) matchingInventoryQuote
+                  in optionalToList combinedQuote
+                  ) transportQuotesForProduct
+              bestQuotes = bestQuotesForQuantity item.allocation.quantity (concat combinedQuotes)
+          in bestQuotes
+          ) itemsToDeliver
+    return (concat bestQuotes)
+
+data SummedQuotes =
+  SummedQuotes {
+    sumSoFar: Int;
+    quotesSoFar: [ProportionalQuote]
+  } deriving (Eq, Show)
+
+bestQuotesForQuantity: Int ->
+                  [CombinedQuote] ->
+                  [ProportionalQuote]
+bestQuotesForQuantity quantity combinedQuotes =
+  let sortedQuotes = sortOn combinedUnitPrice combinedQuotes
+      quotesForQuantity = foldl (\ summedQuotes actQuote ->
+          let missing = quantity - summedQuotes.sumSoFar
+              toBeAdded = min missing actQuote.maxDeliveredQuantity
+              quotes = summedQuotes.quotesSoFar
+              newQuote = ProportionalQuote with quantity = toBeAdded; transportQuoteCid = actQuote.transportQuoteCid; inventoryQuoteCid = actQuote.inventoryQuoteCid; inventoryItemCid = actQuote.inventoryItemCid; allocation = actQuote.allocation
+              newQuotes = if (missing > 0) then [newQuote] ++ quotes else quotes
+              next = SummedQuotes with sumSoFar = toBeAdded + summedQuotes.sumSoFar; quotesSoFar = newQuotes
+          in next
+          ) (SummedQuotes with sumSoFar = 0; quotesSoFar = []) sortedQuotes
+  in quotesForQuantity.quotesSoFar
