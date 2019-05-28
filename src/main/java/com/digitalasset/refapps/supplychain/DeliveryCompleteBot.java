@@ -34,8 +34,7 @@ public class DeliveryCompleteBot {
 
     commandBuilder = commandBuilderFactory.create(partyName, workflowId);
 
-    Filter messageFilter =
-        new InclusiveFilter(Sets.newHashSet(DeliveryComplete.TEMPLATE_ID));
+    Filter messageFilter = new InclusiveFilter(Sets.newHashSet(DeliveryComplete.TEMPLATE_ID));
 
     this.transactionFilter = new FiltersByParty(Collections.singletonMap(partyName, messageFilter));
 
@@ -49,14 +48,11 @@ public class DeliveryCompleteBot {
 
     Map<String, DeliveryComplete> deliveryCompleteContracts =
         filterTemplates(
-                DeliveryComplete.class,
-            ledgerView.getContracts(DeliveryComplete.TEMPLATE_ID));
+            DeliveryComplete.class, ledgerView.getContracts(DeliveryComplete.TEMPLATE_ID));
 
-    for (Map.Entry<String, DeliveryComplete> e :
-            deliveryCompleteContracts.entrySet()) {
+    for (Map.Entry<String, DeliveryComplete> e : deliveryCompleteContracts.entrySet()) {
       builder.addCommand(
-          new DeliveryComplete.ContractId(e.getKey())
-              .exerciseDeliveryComplete_Accept());
+          new DeliveryComplete.ContractId(e.getKey()).exerciseDeliveryComplete_Accept());
     }
 
     return builder

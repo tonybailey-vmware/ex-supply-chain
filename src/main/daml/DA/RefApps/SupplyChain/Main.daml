@@ -57,7 +57,7 @@ template QuoteRequest
             workflowId = WorkflowId self, ..
 
 -- Opaque id of the workflow initiated by this QuoteRequest
-data WorkflowId = WorkflowId with quoteRquestCid: ContractId QuoteRequest
+data WorkflowId = WorkflowId with quoteRequestCid: ContractId QuoteRequest
   deriving (Eq, Show)
 
 template QuoteRequestAccepted

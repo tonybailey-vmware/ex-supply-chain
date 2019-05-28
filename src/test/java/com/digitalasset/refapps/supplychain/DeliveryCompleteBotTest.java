@@ -36,8 +36,10 @@ public class DeliveryCompleteBotTest {
         new LedgerViewFlowable.LedgerTestView(
             HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty());
 
-    LockedTransportCapacity.ContractId lockedCap1 = new LockedTransportCapacity.ContractId("cid-01");
-    LockedTransportCapacity.ContractId lockedCap2 = new LockedTransportCapacity.ContractId("cid-02");
+    LockedTransportCapacity.ContractId lockedCap1 =
+        new LockedTransportCapacity.ContractId("cid-01");
+    LockedTransportCapacity.ContractId lockedCap2 =
+        new LockedTransportCapacity.ContractId("cid-02");
     PaymentRequest.ContractId buyerPayReq1 = new PaymentRequest.ContractId("cid-03");
     PaymentRequest.ContractId buyerPayReq2 = new PaymentRequest.ContractId("cid-04");
     PaymentRequest.ContractId warehousePayReq1 = new PaymentRequest.ContractId("cid-05");
@@ -46,11 +48,28 @@ public class DeliveryCompleteBotTest {
     PaymentRequest.ContractId supplierPayReq2 = new PaymentRequest.ContractId("cid-08");
 
     QuoteRequest.ContractId quoteId = new QuoteRequest.ContractId("Q1");
+    WorkflowId wfId = new WorkflowId(quoteId);
 
     DeliveryComplete tCrT1 =
-        new DeliveryComplete(quoteId,"buyer", "seller", "transportCompany", lockedCap1, buyerPayReq1, supplierPayReq1, warehousePayReq1);
+        new DeliveryComplete(
+            wfId,
+            "buyer",
+            "seller",
+            "transportCompany",
+            lockedCap1,
+            buyerPayReq1,
+            supplierPayReq1,
+            warehousePayReq1);
     DeliveryComplete tCrT2 =
-        new DeliveryComplete(quoteId, "buyer", "seller", "transportCompany", lockedCap2, buyerPayReq2, supplierPayReq2, warehousePayReq2);
+        new DeliveryComplete(
+            wfId,
+            "buyer",
+            "seller",
+            "transportCompany",
+            lockedCap2,
+            buyerPayReq2,
+            supplierPayReq2,
+            warehousePayReq2);
 
     ledgerView =
         ledgerView
@@ -65,8 +84,7 @@ public class DeliveryCompleteBotTest {
         cmd -> {
           Optional<ExerciseCommand> exerciseCommand = cmd.asExerciseCommand();
           assertTrue(exerciseCommand.isPresent());
-          assertEquals(
-              "DeliveryComplete_Accept", exerciseCommand.get().getChoice());
+          assertEquals("DeliveryComplete_Accept", exerciseCommand.get().getChoice());
         });
   }
 }

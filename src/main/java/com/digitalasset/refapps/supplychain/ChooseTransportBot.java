@@ -18,10 +18,7 @@ import com.daml.ledger.rxjava.components.helpers.CreatedContract;
 import com.digitalasset.refapps.supplychain.util.BotLogger;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import com.google.common.collect.Sets;
-import da.refapps.supplychain.main.ChooseTransportBotTrigger;
-import da.refapps.supplychain.main.InventoryItem;
-import da.refapps.supplychain.main.InventoryQuote;
-import da.refapps.supplychain.main.TransportQuote;
+import da.refapps.supplychain.main.*;
 import io.reactivex.Flowable;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -65,13 +62,13 @@ public class ChooseTransportBot {
             ledgerView.getContracts(ChooseTransportBotTrigger.TEMPLATE_ID));
 
     for (Map.Entry<String, ChooseTransportBotTrigger> e : transportBotTriggers.entrySet()) {
-      String quoteId = e.getValue().quoteId.contractId;
+      WorkflowId workflowId = e.getValue().workflowId;
 
       List<TransportQuote.ContractId> quoteCids =
           filterTemplatesWith(
                   TransportQuote.class,
                   ledgerView.getContracts(TransportQuote.TEMPLATE_ID),
-                  transpQuote -> transpQuote.quoteId.equals(quoteId))
+                  transpQuote -> transpQuote.workflowId.equals(workflowId))
               .entrySet().stream()
               .map(invItemRes -> new TransportQuote.ContractId(invItemRes.getKey()))
               .collect(Collectors.toList());
@@ -80,7 +77,7 @@ public class ChooseTransportBot {
               filterTemplatesWith(
                       InventoryQuote.class,
                       ledgerView.getContracts(InventoryQuote.TEMPLATE_ID),
-                      invItemRes -> invItemRes.quoteId.equals(quoteId))
+                      invItemRes -> invItemRes.workflowId.equals(workflowId))
                   .entrySet());
       List<InventoryQuote.ContractId> inventoryQuoteCids =
           inventoryQuotes.stream()

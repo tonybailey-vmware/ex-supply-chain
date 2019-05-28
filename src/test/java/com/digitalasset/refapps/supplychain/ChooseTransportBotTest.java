@@ -14,7 +14,6 @@ import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import da.refapps.supplychain.main.*;
 import da.refapps.supplychain.types.WarehouseAllocation;
 import da.types.Tuple2;
-import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
@@ -41,18 +40,20 @@ public class ChooseTransportBotTest {
             HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty());
 
     QuoteRequest.ContractId quoteId = new QuoteRequest.ContractId("Q1");
+    WorkflowId wfId = new WorkflowId(quoteId);
     QuoteRequest.ContractId otherQuoteId = new QuoteRequest.ContractId("Q2");
+    WorkflowId otherWfId = new WorkflowId(otherQuoteId);
 
     ChooseTransportBotTrigger trigger =
         new ChooseTransportBotTrigger(
-            quoteId, "supplier", "buyer", "seller", Collections.emptyList());
+            wfId, "supplier", "buyer", "address", "seller", Collections.emptyList());
 
     Tuple2<WarehouseAllocation, TransportQuoteItem> item = new Tuple2(null, null);
 
-    TransportQuote tq = new TransportQuote(quoteId, "transportCompany", "supplier", item);
-    TransportQuote tq2 = new TransportQuote(otherQuoteId, "transportCompany", "supplier", item);
+    TransportQuote tq = new TransportQuote(wfId, "transportCompany", "supplier", item);
+    TransportQuote tq2 = new TransportQuote(otherWfId, "transportCompany", "supplier", item);
     InventoryQuote invQ =
-        new InventoryQuote(quoteId, "warehouse", "supplier", "product", 1L, BigDecimal.ONE);
+        new InventoryQuote(wfId, "warehouse", "supplier", "product", 1L, BigDecimal.ONE);
     InventoryItem invItem =
         new InventoryItem("warehouse", "supplier", "product", 1L, BigDecimal.ONE);
     ledgerView =

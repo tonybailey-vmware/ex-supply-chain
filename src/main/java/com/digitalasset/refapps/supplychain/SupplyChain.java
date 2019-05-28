@@ -6,15 +6,13 @@ package com.digitalasset.refapps.supplychain;
 import com.daml.ledger.rxjava.DamlLedgerClient;
 import com.daml.ledger.rxjava.components.Bot;
 import com.digitalasset.refapps.supplychain.util.CliOptions;
-
+import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-
-import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,11 +22,11 @@ public class SupplyChain {
 
   private static final String SELLER_PARTY = "Seller";
   private static final String SUPPLIER_PARTY = "Supplier";
-  private static final String TRANSPORT_PARTY1 = "TransportCompany1";
-  private static final String TRANSPORT_PARTY2 = "TransportCompany2";
+  //  private static final String TRANSPORT_PARTY1 = "TransportCompany1";
+  //  private static final String TRANSPORT_PARTY2 = "TransportCompany2";
 
   private static final AtomicReference<Clock> clock =
-        new AtomicReference<>(Clock.fixed(Instant.ofEpochSecond(0), ZoneId.systemDefault()));
+      new AtomicReference<>(Clock.fixed(Instant.ofEpochSecond(0), ZoneId.systemDefault()));
 
   public static void main(String[] args) {
     CliOptions options = CliOptions.parseArgs(args);
@@ -53,26 +51,32 @@ public class SupplyChain {
     CommandsAndPendingSetBuilder.Factory commandBuilderFactory =
         CommandsAndPendingSetBuilder.factory(APPLICATION_ID, clock::get, mrt);
 
-    AggregatedQuoteBot aggregatedQuoteBot = new AggregatedQuoteBot(commandBuilderFactory, SELLER_PARTY);
-    Bot.wire(APPLICATION_ID,
-             client,
-             aggregatedQuoteBot.transactionFilter,
-             aggregatedQuoteBot::calculateCommands,
-             aggregatedQuoteBot::getContractInfo);
+    AggregatedQuoteBot aggregatedQuoteBot =
+        new AggregatedQuoteBot(commandBuilderFactory, SELLER_PARTY);
+    Bot.wire(
+        APPLICATION_ID,
+        client,
+        aggregatedQuoteBot.transactionFilter,
+        aggregatedQuoteBot::calculateCommands,
+        aggregatedQuoteBot::getContractInfo);
 
-    ChooseTransportBot chooseTransportBot = new ChooseTransportBot(commandBuilderFactory, SUPPLIER_PARTY);
-    Bot.wire(APPLICATION_ID,
-            client,
-            chooseTransportBot.transactionFilter,
-            chooseTransportBot::calculateCommands,
-            chooseTransportBot::getContractInfo);
+    ChooseTransportBot chooseTransportBot =
+        new ChooseTransportBot(commandBuilderFactory, SUPPLIER_PARTY);
+    Bot.wire(
+        APPLICATION_ID,
+        client,
+        chooseTransportBot.transactionFilter,
+        chooseTransportBot::calculateCommands,
+        chooseTransportBot::getContractInfo);
 
-    DeliveryCompleteBot transportCapacityReleaseBot = new DeliveryCompleteBot(commandBuilderFactory, SELLER_PARTY);
-    Bot.wire(APPLICATION_ID,
-            client,
-            transportCapacityReleaseBot.transactionFilter,
-            transportCapacityReleaseBot::calculateCommands,
-            transportCapacityReleaseBot::getContractInfo);
+    DeliveryCompleteBot transportCapacityReleaseBot =
+        new DeliveryCompleteBot(commandBuilderFactory, SELLER_PARTY);
+    Bot.wire(
+        APPLICATION_ID,
+        client,
+        transportCapacityReleaseBot.transactionFilter,
+        transportCapacityReleaseBot::calculateCommands,
+        transportCapacityReleaseBot::getContractInfo);
   }
 
   public static void waitForSandbox(CliOptions options, DamlLedgerClient client) {

@@ -41,13 +41,14 @@ public class AggregatedQuoteBotTest {
     DeliveryPlan.ContractId dCoid2 = new DeliveryPlan.ContractId("cid-02");
 
     QuoteRequest.ContractId quoteId = new QuoteRequest.ContractId("Q1");
+    WorkflowId wfId = new WorkflowId(quoteId);
 
     AggregatedQuoteTrigger aQt1 =
         new AggregatedQuoteTrigger(
-            quoteId, "supplier", "buyer", "seller", Collections.emptyList(), dCoid1);
+            wfId, "supplier", "buyer", "address", "seller", Collections.emptyList(), dCoid1);
     AggregatedQuoteTrigger aQt2 =
         new AggregatedQuoteTrigger(
-            quoteId, "supplier", "buyer", "seller", Collections.emptyList(), dCoid2);
+            wfId, "supplier", "buyer", "address", "seller", Collections.emptyList(), dCoid2);
 
     ledgerView =
         ledgerView
