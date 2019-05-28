@@ -28,6 +28,7 @@ data WarehouseAllocationWithDates = WarehouseAllocationWithDates with
 data TransportedWarehouseAllocation = TransportedWarehouseAllocation with
     allocation: WarehouseAllocation
     transportCompany: Party
+    pickUpDate: Date
     deliveryDate: Date
   deriving (Eq, Show)
 
