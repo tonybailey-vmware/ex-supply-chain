@@ -8,7 +8,7 @@ import DA.RefApps.SupplyChain.Scenarios
 import DA.RefApps.SupplyChain.Main
 import DA.RefApps.SupplyChain.Types
 
-lockedTransportCapacityHelper (quoteId: ContractId QuoteRequest) (productName: Text) (delivery: Date) = scenario do
+lockedTransportCapacityHelper (workflowId: WorkflowId) (productName: Text) (delivery: Date) = scenario do
   buyer <- getParty "Buyer"
   seller <- getParty "Seller"
   supplier <- getParty "Supplier"
@@ -25,7 +25,7 @@ lockedTransportCapacityHelper (quoteId: ContractId QuoteRequest) (productName: T
 
   lockTrans <- submit transportComp1 do
     create LockedTransportCapacity with
-      quoteId = quoteId
+      workflowId = workflowId
       transportCompany = transportComp1
       supplier = supplier
       deliveryDate = delivery
@@ -34,7 +34,7 @@ lockedTransportCapacityHelper (quoteId: ContractId QuoteRequest) (productName: T
 
   return (transportPayReq, lockTrans)
 
-lockedInventoryItemHelper (quoteId: ContractId QuoteRequest) (productName: Text) = scenario do
+lockedInventoryItemHelper (workflowId: WorkflowId) (productName: Text) = scenario do
   buyer <- getParty "Buyer"
   seller <- getParty "Seller"
   supplier <- getParty "Supplier"
@@ -51,7 +51,7 @@ lockedInventoryItemHelper (quoteId: ContractId QuoteRequest) (productName: Text)
 
   lockedInv <- submit warehouse1 do
     create LockedInventoryItem with
-      quoteId = quoteId
+      workflowId = workflowId
       warehouse = warehouse1
       supplier = supplier
       productName = productName
@@ -75,9 +75,10 @@ marginTest = scenario do
   quoteReq <- submit buyer do
     exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
                         products = [setupData.product01]
+  let workflowId = WorkflowId quoteReq
 
-  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper quoteReq setupData.product01.productName setupData.product01.deliveryFrom
-  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper quoteReq setupData.product01.productName
+  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
+  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper workflowId setupData.product01.productName
 
   supplierPayReq <- submit supplier do
     create PaymentRequest with
@@ -97,7 +98,7 @@ marginTest = scenario do
 
   plan <- submit supplier do
     create DeliveryPlan with
-      quoteId = quoteReq
+      workflowId = workflowId
       supplier = supplier
       buyer = buyer
       seller = seller
@@ -105,9 +106,10 @@ marginTest = scenario do
 
   aggregated <- submit seller do
     create AggregatedQuote with
-      quoteId = quoteReq
+      workflowId = workflowId
       supplier = supplier
       buyer = buyer
+      buyerAddress = "none"
       seller = seller
       items = [pricedWAllocation1, pricedWAllocation2]
       deliveryPlanCid = plan
@@ -149,8 +151,9 @@ paymentTest = scenario do
   quoteReq <- submit buyer do
     exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
                         products = [setupData.product01]
+  let workflowId = WorkflowId quoteReq
 
-  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper quoteReq setupData.product01.productName setupData.product01.deliveryFrom
+  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
 
   buyerPayReq <- submit seller do
     create PaymentRequest with
@@ -158,7 +161,7 @@ paymentTest = scenario do
       payee = seller
       price = 11.1
 
-  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper quoteReq setupData.product01.productName
+  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper workflowId setupData.product01.productName
 
   supplierPayReq <- submit supplier do
     create PaymentRequest with
@@ -168,8 +171,9 @@ paymentTest = scenario do
 
   pickupRequest <- submit transportComp1 do
     create PickUpRequest with
-      quoteId = quoteReq
+      workflowId = workflowId
       buyer = buyer
+      buyerAddress = "none"
       seller = seller
       productName = setupData.product01.productName
       quantity = 1

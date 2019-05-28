@@ -54,11 +54,15 @@ template QuoteRequest
       QuoteRequest_Accept: ContractId QuoteRequestAccepted
         do
           create QuoteRequestAccepted with
-            quoteId = self, ..
+            workflowId = WorkflowId self, ..
+
+-- Opaque id of the workflow initiated by this QuoteRequest
+data WorkflowId = WorkflowId with quoteRquestCid: ContractId QuoteRequest
+  deriving (Eq, Show)
 
 template QuoteRequestAccepted
   with
-    quoteId: ContractId QuoteRequest -- opaque id of the workflow initiated by this QuoteRequest
+    workflowId: WorkflowId
     buyer: Party
     buyerAddress: Text
     seller  : Party
@@ -74,7 +78,7 @@ template QuoteRequestAccepted
 
 template QuoteRequestSupplyInvitation
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     buyer: Party
     buyerAddress: Text
     seller: Party
@@ -91,7 +95,7 @@ template QuoteRequestSupplyInvitation
 -- Supplier can initiate the inventory reservation and transport quote collection with this template
 template SupplyRequest
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     buyer: Party
     buyerAddress: Text
     seller: Party
@@ -139,7 +143,7 @@ template InventoryItem
       InventoryItem_SplitAndLock: (ContractId InventoryItem, ContractId LockedInventoryItem)
         with
           quantityToLock: Int
-          quoteRequestId: ContractId QuoteRequest
+          workflowId: WorkflowId
         do
           let remainingQuantity = quantity - quantityToLock
           assertMsg "Non-positive remaining quantity." $ remainingQuantity > 0
@@ -156,7 +160,7 @@ template InventoryItem
 
 template LockedInventoryItem
   with
-    quoteRequestId: ContractId QuoteRequest
+    workflowId: WorkflowId
     warehouse: Party
     supplier: Party
     productName: Text
@@ -169,7 +173,7 @@ template LockedInventoryItem
 
 template InventoryQuoteRequest
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     warehouse: Party
     supplier: Party
     product: OrderedProduct
@@ -190,7 +194,7 @@ template InventoryQuoteRequest
 
 template InventoryQuote
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     warehouse: Party
     supplier: Party
     productName: Text
@@ -201,51 +205,6 @@ template InventoryQuote
 
 -- Supplier
 
--- template InventoryLockingBotTrigger
---   with
---     supplier: Party
---     buyer: Party
---     seller: Party
---     whatToLock: [WarehouseAllocationWithDates]
---   where
---     signatory supplier
---     controller supplier can
---       WarehouseInvetoryLockingBotTrigger_Lock: (ContractId RequestDeliveryProposal, [ContractId LockedInventoryItem])
---         with
---           inventoryCids : [ContractId InventoryItem]
---         do
---           inventory <- forA inventoryCids fetch
---           let inventoryPair = zip inventoryCids inventory
---           lockResult <- forA whatToLock (\alloc -> do
---               let inventoryItem = fromSome $ find (\(cid, i) -> i.productName == alloc.allocation.productName && i.warehouse == alloc.allocation.warehouse) inventoryPair
---               exercise (fst inventoryItem) $ InventoryItem_SplitAndLock with
---                                                 quantityToLock = alloc.allocation.quantity
---             )
---           let (_, lockedCids) = unzip lockResult
---           proposal <- create RequestDeliveryProposal with
---                   items = whatToLock, ..
---           return (proposal, lockedCids)
-
--- template RequestDeliveryProposal
---   with
---     supplier: Party
---     buyer: Party
---     seller: Party
---     items: [WarehouseAllocationWithDates]
---   where
---     signatory supplier
---     controller supplier can
---       RequestDeliveryProposal_RequestTransportQuote: (ContractId TransportQuoteRequestPending, [ContractId TransportQuoteRequest])
---         with
---           transportCompanies: [Party]
---         do
---           qRequests <- forA transportCompanies \tC -> create TransportQuoteRequest with
---                                                   transportCompany = tC
---                                                   supplier = supplier
---                                                   items = items
---           pending <- create TransportQuoteRequestPending with ..
---           return (pending, qRequests)
-
 data TransportQuoteItem = TransportQuoteItem with
     transportableQuantity: Int
     price: Decimal -- total price corresponding to transportableQuantity
@@ -254,7 +213,7 @@ data TransportQuoteItem = TransportQuoteItem with
 
 template TransportQuoteRequest
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     transportCompany: Party
     supplier: Party
     buyer: Party
@@ -271,7 +230,7 @@ template TransportQuoteRequest
 
 template TransportQuote
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     transportCompany: Party
     supplier: Party
     item: (WarehouseAllocation, TransportQuoteItem)
@@ -288,7 +247,7 @@ template TransportQuote
                 payer = supplier
                 payee = transportCompany
           create LockedTransportCapacity with
-                quoteId = quoteId
+                workflowId = workflowId
                 transportCompany = transportCompany
                 supplier = supplier
                 item = fst item
@@ -297,9 +256,10 @@ template TransportQuote
 
 template TransportQuoteRequestPending
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     buyer: Party
+    buyerAddress: Text
     seller: Party
     items: [WarehouseAllocationWithDates]
   where
@@ -312,9 +272,10 @@ template TransportQuoteRequestPending
 
 template ChooseTransportBotTrigger
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     buyer: Party
+    buyerAddress: Text
     seller: Party
     items: [WarehouseAllocationWithDates]
   where
@@ -336,7 +297,7 @@ template ChooseTransportBotTrigger
               let inventoryItemCid = snd inventoryItemWithCid
               (newInventoryCid, lockedInventoryCid) <- exercise inventoryItemCid $ InventoryItem_SplitAndLock with
                 quantityToLock = pq.quantity
-                quoteRequestId = quoteId
+                workflowId = workflowId
               newInventory <- fetch newInventoryCid
               let allocation = TransportedWarehouseAllocation with allocation = pq.allocation.allocation;  transportCompany = transportQuote.transportCompany; deliveryDate = (snd transportQuote.item).deliveryDate
                   prevLiveInventoriesWithoutArchived = filter (\inventoryItemWithCid -> (snd inventoryItemWithCid) /= inventoryItemCid) summedLocks.liveInventoryItems
@@ -344,11 +305,7 @@ template ChooseTransportBotTrigger
               return SummedLocks with liveInventoryItems = updatedInventories; locksSoFar = [((allocation, (snd transportQuote.item).price), lockedTransportCapacity, lockedInventoryCid)] ++ summedLocks.locksSoFar
               ) (SummedLocks with liveInventoryItems = inventoryItemsWithCid; locksSoFar = []) proportionalQuotes
           create AggregatedQuotePending with
-            quoteId = quoteId
-            supplier = supplier
-            buyer = buyer
-            seller = seller
-            items = locks.locksSoFar
+            items = locks.locksSoFar, ..
 
 data SummedLocks =
   SummedLocks {
@@ -356,13 +313,12 @@ data SummedLocks =
     locksSoFar: [(TransportedWarehouseAllocationWithPrice, ContractId LockedTransportCapacity, ContractId LockedInventoryItem)]
   } deriving (Eq, Show)
 
-
 template LockedTransportCapacity
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     transportCompany: Party
     supplier: Party
-    item: WarehouseAllocation -- TODO add Address!! down from TransportQuoteRequest
+    item: WarehouseAllocation
     deliveryDate: Date
     transportPaymentRequestCid: ContractId PaymentRequest
   where
@@ -376,9 +332,10 @@ template LockedTransportCapacity
 
 template AggregatedQuotePending
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     buyer: Party
+    buyerAddress: Text
     seller: Party
     items: [(TransportedWarehouseAllocationWithPrice, ContractId LockedTransportCapacity, ContractId LockedInventoryItem)]
   where
@@ -403,11 +360,12 @@ template AggregatedQuotePending
 
 template AggregatedQuoteTrigger
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     buyer: Party
+    buyerAddress: Text
     seller: Party
-    items: [PricedWarehouseAllocation] -- TODO add Address!! down from TransportQuoteRequest
+    items: [PricedWarehouseAllocation]
     deliveryPlanCid: ContractId DeliveryPlan
   where
     signatory supplier
@@ -421,11 +379,12 @@ template AggregatedQuoteTrigger
 -- Aggregated quote ready for sending to buyer and adding the margin before that
 template AggregatedQuote
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     buyer: Party
+    buyerAddress: Text
     seller: Party
-    items: [PricedWarehouseAllocation] -- TODO add Address!! down from TransportQuoteRequest
+    items: [PricedWarehouseAllocation]
     deliveryPlanCid: ContractId DeliveryPlan
   where
     signatory seller
@@ -471,7 +430,7 @@ data DeliveryPlanItem = DeliveryPlanItem with
 
 template DeliveryPlan
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     buyer: Party
     seller: Party
@@ -490,9 +449,10 @@ data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
 
 template DeliveryAndPaymentPlan
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     buyer: Party
+    buyerAddress: Text
     seller: Party
     items: [DeliveryAndPaymentPlanItem]
   where
@@ -513,41 +473,45 @@ template DeliveryAndPaymentPlan
               deliveryDate = item.allocation.deliveryDate, ..
             )
 
+-- A quote which can be accepted by the buyer
 template Quote
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     seller: Party
     buyer: Party
+    buyerAddress: Text
     deliveryPlanCid: ContractId DeliveryAndPaymentPlan
-    items: [PricedWarehouseAllocation] -- TODO add Address!! down from TransportQuoteRequest
+    items: [PricedWarehouseAllocation]
     totalPrice: Decimal
   where
     signatory seller
     observer buyer
 
     controller buyer can
-      Quote_Accept: ContractId QuoteAccepted
+      Quote_Accept: ContractId Order
         do
-          create QuoteAccepted with ..
+          create Order with ..
 
-template QuoteAccepted
+-- Represents the obligation of seller to delivery the products in deliveryPlan
+template Order
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     seller: Party
     buyer: Party
     deliveryPlanCid: ContractId DeliveryAndPaymentPlan
   where
-    signatory seller
+    signatory seller, buyer
 
     controller seller can
-      QuoteAccepted_StartDelivery: [ContractId DeliveryInstruction]
+      Order_StartDelivery: [ContractId DeliveryInstruction]
         do
           exercise deliveryPlanCid DeliveryPlan_Start
 
 template DeliveryInstruction
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     buyer: Party
+    buyerAddress: Text
     seller: Party
     productName: Text
     warehouse: Party
@@ -560,7 +524,7 @@ template DeliveryInstruction
     deliveryDate: Date
   where
     signatory seller
-    observer transportCompany
+    observer transportCompany, warehouse
 
     controller transportCompany can
       DeliveryInstruction_PickUp: ContractId PickUpRequest
@@ -572,8 +536,9 @@ template DeliveryInstruction
 
 template PickUpRequest
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     buyer: Party
+    buyerAddress: Text
     seller: Party
     productName: Text
     warehouse: Party
@@ -591,8 +556,7 @@ template PickUpRequest
       PickUpRequest_Accept: ContractId Delivery
         do
           lockedInventoryItem <- fetch lockedInventoryItemCid
-          assertMsg "aaa" $ lockedInventoryItem.productName == productName
-          assertMsg "bbb" $ lockedInventoryItem.quantity >= quantity
+          -- consume the locked inventory indicating that the products are no longer returning
           archive lockedInventoryItemCid
           create Delivery with
             warehousePaymentRequestCid = lockedInventoryItem.warehousePaymentRequestCid, ..
@@ -626,8 +590,9 @@ template PaymentObligation
 -- transported to the destination and it can start the payment for it.
 template Delivery
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     buyer: Party
+    buyerAddress: Text
     seller: Party
     productName: Text
     quantity: Int
@@ -650,7 +615,7 @@ template Delivery
 -- Template to indicate that the delivery was acknowledged and the seller can start the payouts.
 template DeliveryComplete
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     buyer: Party
     seller: Party
     transportCompany: Party
@@ -675,7 +640,7 @@ template DeliveryComplete
 -- This contract is not visible to buyer, therefore payment to supplier can happen
 template DeliveryPayment
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     seller: Party
     transportCompany: Party
@@ -696,7 +661,7 @@ template DeliveryPayment
 -- This contract is not visible to seller, therefore payment to warehouse can happen
 template DeliverySupplierPayment
   with
-    quoteId: ContractId QuoteRequest
+    workflowId: WorkflowId
     supplier: Party
     transportCompany: Party
     transportCapacityLockCid: ContractId LockedTransportCapacity
