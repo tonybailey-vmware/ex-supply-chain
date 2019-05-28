@@ -295,13 +295,18 @@ template ChooseTransportBotTrigger
           locks <- foldlA (\ summedLocks pq -> do
               transportQuote <- fetch pq.transportQuoteCid
               let inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == (fst transportQuote.item).productName && (fst transportQuote.item).warehouse == (fst itemWithCid).warehouse) summedLocks.liveInventoryItems
-              lockedTransportCapacity <- exercise pq.transportQuoteCid TransportQuote_Lock with quantity = pq.quantity
+              lockedTransportCapacityCid <- exercise pq.transportQuoteCid TransportQuote_Lock with quantity = pq.quantity
               let inventoryItemCid = snd inventoryItemWithCid
               (newInventoryCid, lockedInventoryCid) <- exercise inventoryItemCid $ InventoryItem_SplitAndLock with
                 quantityToLock = pq.quantity
                 workflowId = workflowId
               newInventory <- fetch newInventoryCid
+              lockedInventory <- fetch lockedInventoryCid
+              inventoryPaymentRequest <- fetch lockedInventory.warehousePaymentRequestCid
+              lockedTransportCapacity <- fetch lockedTransportCapacityCid
+              transportPaymentRequest <- fetch lockedTransportCapacity.transportPaymentRequestCid
               let newAllocation = pq.allocation.allocation with quantity = pq.quantity
+                  combinedPrice = inventoryPaymentRequest.price + transportPaymentRequest.price
                   allocation = TransportedWarehouseAllocation with
                     allocation = newAllocation
                     transportCompany = transportQuote.transportCompany
@@ -309,7 +314,9 @@ template ChooseTransportBotTrigger
                     deliveryDate = (snd transportQuote.item).deliveryDate
                   prevLiveInventoriesWithoutArchived = filter (\inventoryItemWithCid -> (snd inventoryItemWithCid) /= inventoryItemCid) summedLocks.liveInventoryItems
                   updatedInventories = (newInventory, newInventoryCid) :: prevLiveInventoriesWithoutArchived
-              return SummedLocks with liveInventoryItems = updatedInventories; locksSoFar = [((allocation, (snd transportQuote.item).price), lockedTransportCapacity, lockedInventoryCid)] ++ summedLocks.locksSoFar
+              return SummedLocks with
+                liveInventoryItems = updatedInventories
+                locksSoFar = [((allocation, combinedPrice), lockedTransportCapacityCid, lockedInventoryCid)] ++ summedLocks.locksSoFar
               ) (SummedLocks with liveInventoryItems = inventoryItemsWithCid; locksSoFar = []) proportionalQuotes
           create AggregatedQuotePending with
             items = locks.locksSoFar, ..
@@ -359,7 +366,7 @@ template AggregatedQuotePending
               payee = supplier
               price = price
             return $ DeliveryPlanItem alloc ltc lii supplierPayment)
-          let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items --TODO: fix price (quantity * unitPrice)
+          let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items
           deliveryPlanCid <- create DeliveryPlan with
             items = deliveryItems, ..
           create AggregatedQuoteTrigger with

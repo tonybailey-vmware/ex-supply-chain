@@ -152,7 +152,7 @@ fullScenario = scenario do
   -- This is for visibility purposes, in the next step, seller adds the margin (not visible for supplier)
   quote <- submit seller do
     aggregatedQuote <- exercise aggregatedQuoteTrigger AggregatedQuoteTrigger_Execute
-    quote <- exercise aggregatedQuote $ AggregatedQuote_AddMargin 1.0
+    quote <- exercise aggregatedQuote $ AggregatedQuote_AddMargin 0.1
     return quote
 
   -- Buyer accepts the quote
@@ -181,8 +181,11 @@ fullScenario = scenario do
     exercise delivery1 Delivery_Acknowledge
 
   -- Transport company acknowledges delivery as well finishing it and releasing capacity
-  (deliveryPayment, buyerSellerObligation) <- submit seller do
-    exercise deliveryComplete DeliveryComplete_Accept
+  deliveryPayment <- submit seller do
+    (deliveryPayment, buyerSellerObligationCid) <- exercise deliveryComplete DeliveryComplete_Accept
+    buyerSellerObligation <- fetch buyerSellerObligationCid
+    buyerSellerObligation.price === 1826.0
+    return deliveryPayment
 
   -- TODO: Ask whether it is OK to release transport capacity lock after payment
   submit supplier do
@@ -192,6 +195,6 @@ fullScenario = scenario do
     supplierWarehouseObligation <- fetch supplierWarehouseObligationCid
     supplierTransportObligation <- fetch supplierTransportObligationCid
     -- TODO: Insert real numbers
-    sellerSupplierObligation.price === 10.0
+    sellerSupplierObligation.price === 1660.0
     supplierWarehouseObligation.price === 1650.0
     supplierTransportObligation.price === 10.0
