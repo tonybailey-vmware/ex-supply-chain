@@ -7,8 +7,7 @@ version: 2.1
 executors:
   daml-executor:
     docker:
-      - image: digitalasset/daml-sdk:0.12.20-circleci-master
-
+      - image: circleci/openjdk:11.0-jdk
 
 jobs:
   mvn_test:
@@ -20,7 +19,10 @@ jobs:
             - m2-{{ checksum "pom.xml" }}
             - m2
       - run:
-          command: mvn verify
+          command: |
+            curl -sSL https://get.daml.com/ | sh
+            export PATH=/home/circleci/.daml/bin:$PATH
+            mvn verify
       - save_cache:
           paths:
             - ~/.m2
@@ -36,8 +38,9 @@ jobs:
       - run:
           command: |
             mkdir -p target/daml-test-reports
-            da compile
-            da run -- damlc test --junit target/daml-test-reports/daml-test.xml src/main/daml/DA/RefApps/SupplyChain/Scenarios.daml
+            curl -sSL https://get.daml.com/ | sh
+            /home/circleci/.daml/bin/daml build -o target/supplychain.dar
+            /home/circleci/.daml/bin/daml test --junit target/daml-test-reports/daml-test.xml src/main/daml/DA/RefApps/SupplyChain/Scenarios.daml
       - store_test_results:
           path: target/daml-test-reports
       - store_artifacts:

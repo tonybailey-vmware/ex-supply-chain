@@ -150,10 +150,11 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>da</executable>
+                            <executable>daml</executable>
                             <arguments>
-                                <argument>--script</argument>
-                                <argument>compile</argument>
+                                <argument>build</argument>
+                                <argument>-o</argument>
+                                <argument>${project.build.directory}/supplychain.dar</argument>
                             </arguments>
                         </configuration>
                     </execution>
