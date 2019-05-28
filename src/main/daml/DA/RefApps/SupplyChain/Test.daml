@@ -114,7 +114,7 @@ marginTest = scenario do
       items = [pricedWAllocation1, pricedWAllocation2]
       deliveryPlanCid = plan
 
-  (quoteCid, deliveryPlanCid) <- submit seller do
+  quoteCid <- submit seller do
     exercise aggregated $ AggregatedQuote_AddMargin 0.1
 
   quote <- submit seller do fetch quoteCid
@@ -127,7 +127,7 @@ marginTest = scenario do
   let secondItem = head (tail quote.items)
   secondItem.price === (23.0 * 1.1)
 
-  deliveryPlan <- submit seller do fetch deliveryPlanCid
+  deliveryPlan <- submit seller do fetch quote.deliveryPlanCid
   (length quote.items) === 2
   assertMsg "Product name is wrong" $ all (\i -> i.allocation.allocation.productName == setupData.product01.productName) deliveryPlan.items
   let firstDeliv = head deliveryPlan.items
@@ -190,7 +190,7 @@ paymentTest = scenario do
   complete <- submit buyer do
     exercise delivery Delivery_Acknowledge
 
-  deliveryPayment <- submit seller do
+  (deliveryPayment, buyerSellerObligation) <- submit seller do
     exercise complete DeliveryComplete_Accept
 
   submit supplier do

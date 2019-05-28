@@ -6,6 +6,7 @@ daml 1.2
 module DA.RefApps.SupplyChain.Scenarios where
 
 import DA.Date
+import DA.Assert
 
 import DA.RefApps.SupplyChain.Main
 import DA.RefApps.SupplyChain.Types
@@ -103,25 +104,27 @@ fullScenario = scenario do
                         supplier = supplier
 
   -- Acceptance of invitation to supply the delivery, manual selection of product+warehouse+quantity for the quote
-  (tranQuoteReqPending, [invReservationReq1, invReservationReq2], [transportQuoteReqestT1W1, transportQuoteReqestT1W2, transportQuoteReqestT2W1, transportQuoteReqestT2W2]) <-  submit supplier do
-    supplyRequest <-  exercise acceptedQr QuoteRequestSupplyInvitation_Accept
-    -- Selection of warehouses and transport companies, sending transport requests, asking for transport quotes
-    exercise supplyRequest $ SupplyRequest_StartPriceCollection [warehouse1, warehouse2] [transportComp1, transportComp2]
+  (tranQuoteReqPending, [invReservationReq1, invReservationReq2],
+   [transportQuoteRequestT1W1, transportQuoteRequestT1W2,
+    transportQuoteRequestT2W1, transportQuoteRequestT2W2]) <-  submit supplier do
+      supplyRequest <- exercise acceptedQr QuoteRequestSupplyInvitation_Accept
+      -- Selection of warehouses and transport companies, sending transport requests, asking for transport quotes
+      exercise supplyRequest $ SupplyRequest_StartPriceCollection [warehouse1, warehouse2] [transportComp1, transportComp2]
 
   -- Transport companies submit their transport quotes
   let
     transportQuoteItemT1_1 = TransportQuoteItem 30 10.0 (date 2019 Dec 5)
     transportQuoteItemT1_2 = TransportQuoteItem 50 15.0 (date 2019 Dec 8)
-    transportQuoteItemT2_1 = TransportQuoteItem 50 12.0 (date 2019 Dec 5)
+    transportQuoteItemT2_1 = TransportQuoteItem 20 12.0 (date 2019 Dec 5)
     transportQuoteItemT2_2 = TransportQuoteItem 50 13.0 (date 2019 Dec 8)
   transportQuoteT1W1 <- submit transportComp1 do
-    exercise transportQuoteReqestT1W1 $ TransportQuoteRequest_Accept transportQuoteItemT1_1
+    exercise transportQuoteRequestT1W1 $ TransportQuoteRequest_Accept transportQuoteItemT1_1
   transportQuoteT1W2 <- submit transportComp1 do
-    exercise transportQuoteReqestT1W2 $ TransportQuoteRequest_Accept transportQuoteItemT1_2
+    exercise transportQuoteRequestT1W2 $ TransportQuoteRequest_Accept transportQuoteItemT1_2
   transportQuoteT2W1 <- submit transportComp2 do
-    exercise transportQuoteReqestT2W1 $ TransportQuoteRequest_Accept transportQuoteItemT2_1
+    exercise transportQuoteRequestT2W1 $ TransportQuoteRequest_Accept transportQuoteItemT2_1
   transportQuoteT2W2 <- submit transportComp2 do
-    exercise transportQuoteReqestT2W2 $ TransportQuoteRequest_Accept transportQuoteItemT2_2
+    exercise transportQuoteRequestT2W2 $ TransportQuoteRequest_Accept transportQuoteItemT2_2
 
   -- warehouses accept reservation requests
   invReservationCid1 <- submit warehouse1 do
@@ -130,54 +133,63 @@ fullScenario = scenario do
   invReservationCid2 <- submit warehouse2 do
     exercise invReservationReq2 $ InventoryQuoteRequest_Accept setupData.inventoryW2P1Cid
 
-
-  --TODO: fix the workflow below:
-
   -- After a manual signal (that means end of transport quote request period), supplier's BOT collects
-  -- all the available quotes sent in by transport companies and the best is chosen
-  -- (aggregatedQuotePending, [tranCapacityLockReq1]) <- submit supplier do
-  --   trigger <- exercise tranQuoteReqPending TransportQuoteRequestPending_ChooseTransport
-  --   exercise trigger $ ChooseTransportBotTrigger_Proceed [transportQuote1, transportQuote2]
+  -- all the available (tranport and inventory) quotes sent in by transport companies with the inventory items
+  -- and the best is chosen
+  aggregatedQuotePending <- submit supplier do
+    trigger <- exercise tranQuoteReqPending TransportQuoteRequestPending_ChooseTransport
+    exercise trigger $
+      ChooseTransportBotTrigger_Proceed
+        [transportQuoteT1W1, transportQuoteT1W2, transportQuoteT2W1, transportQuoteT2W2]
+        [invReservationCid1, invReservationCid2]
+        [setupData.inventoryW1P1Cid, setupData.inventoryW1P2Cid, setupData.inventoryW2P1Cid, setupData.inventoryW2P2Cid]
 
-  -- -- Best quote's submitter transport company locks the capacity
-  -- tranCapacityLock1 <- submit transportComp1 do
-  --   exercise tranCapacityLockReq1 TransportCapacityLockRequest_Accept
+  -- Supplier sends the quote to seller (with the corresponding transport capacity lock)
+  aggregatedQuoteTrigger <- submit supplier do
+    exercise aggregatedQuotePending $ AggregatedQuotePending_SendQuoteToSeller
 
-  -- -- Supplier sends the quote to seller (with the corresponding transport capacity lock)
-  -- aggregatedQuoteTrigger <- submit supplier do
-  --   exercise aggregatedQuotePending $ AggregatedQuotePending_SendQuoteToSeller [tranCapacityLock1]
+  -- This triggers seller's BOT that creates an aggregated quote containing prices without the margin, yet
+  -- This is for visibility purposes, in the next step, seller adds the margin (not visible for supplier)
+  quote <- submit seller do
+    aggregatedQuote <- exercise aggregatedQuoteTrigger AggregatedQuoteTrigger_Execute
+    quote <- exercise aggregatedQuote $ AggregatedQuote_AddMargin 1.0
+    return quote
 
-  -- -- This triggers seller's BOT that creates an aggregated quote containing prices without the margin, yet
-  -- -- This is for visibility purposes, in the next step, seller adds the margin (not visible for supplier)
-  -- quote <- submit seller do
-  --   aggregatedQuote <- exercise aggregatedQuoteTrigger AggregatedQuoteTrigger_Execute
-  --   exercise aggregatedQuote $ AggregatedQuote_AddMargin 1
+  -- Buyer accepts the quote
+  acceptedQuote <- submit buyer do
+    exercise quote Quote_Accept
 
-  -- -- Buyer accepts the quote
-  -- accepted <- submit buyer do
-  --   exercise quote Quote_Accept
+  -- Seller start the delivery process notifying all the participants of the process
+  [_delI1, _delI2, deliveryInstruction1, _delI4] <- submit seller do
+    exercise acceptedQuote Order_StartDelivery
 
-  -- -- Seller start the delivery process notifying all the participants of the process
-  -- [deliveryInstruction1, deliveryInstruction2] <- submit seller do
-  --   exercise accepted QuoteAccepted_StartDelivery
+  passToDate $ date 2019 Dec 5
 
-  -- passToDate $ date 2019 Dec 5
+  -- Transport company asks the warehouse for pickup acknowledgement
+  pickUpReq <- submit transportComp1 do
+    exercise deliveryInstruction1 DeliveryInstruction_PickUp
 
-  -- -- Transport company asks for pickup acknowledgement
-  -- pickUpReq <- submit transportComp1 do
-  --   exercise deliveryInstruction1 DeliveryInstruction_PickUp
+  -- TODO: Check whether it is good to send the delivery acknowledgement request to the buyer from the warehouse (instead of the transport company)
+  -- Warehouse acknowledges the pickup then asks for buyer's delivery acknowledgement
+  delivery1 <- submit warehouse1 do
+    exercise pickUpReq $ PickUpRequest_Accept
 
-  -- -- TODO: Check whether it is good to send the delivery acknowledgement request to the buyer from the warehouse (instead of the transport company)
-  -- -- Warehouse acknowledges pickup then asks for buyer's delivery acknowledgement
-  -- delivery1 <- submit warehouse1 do
-  --   exercise pickUpReq $ PickUpRequest_Accept locked1
+  -- Buyer ackowledges delivery and pays
+  deliveryComplete <- submit buyer do
+    exercise delivery1 Delivery_Acknowledge
 
-  -- -- Buyer ackowledges delivery and pays
-  -- deliveryAck <- submit buyer do
-  --   exercise delivery1 Delivery_Pay
+  -- Transport company acknowledges delivery as well finishing it and releasing capacity
+  (deliveryPayment, buyerSellerObligation) <- submit seller do
+    exercise deliveryComplete DeliveryComplete_Accept
 
-  -- -- Transport company acknowledges delivery as well finishing it and releasing capacity
-  -- submit transportComp1 do
-  --   exercise deliveryAck DeliveryAck_ReleaseCapacity
-
-  return ()
+  -- TODO: Ask whether it is OK to release transport capacity lock after payment
+  submit supplier do
+    (deliverySupplierPayment, sellerSupplierObligationCid) <- exercise deliveryPayment DeliveryPayment_Accept
+    (supplierWarehouseObligationCid, supplierTransportObligationCid) <- exercise deliverySupplierPayment DeliverySupplierPayment_Pay
+    sellerSupplierObligation <- fetch sellerSupplierObligationCid
+    supplierWarehouseObligation <- fetch supplierWarehouseObligationCid
+    supplierTransportObligation <- fetch supplierTransportObligationCid
+    -- TODO: Insert real numbers
+    sellerSupplierObligation.price === 10.0
+    supplierWarehouseObligation.price === 1650.0
+    supplierTransportObligation.price === 10.0

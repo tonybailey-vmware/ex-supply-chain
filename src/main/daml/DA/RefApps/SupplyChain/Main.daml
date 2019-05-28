@@ -146,7 +146,7 @@ template InventoryItem
           workflowId: WorkflowId
         do
           let remainingQuantity = quantity - quantityToLock
-          assertMsg "Non-positive remaining quantity." $ remainingQuantity > 0
+          assertMsg "Negative remaining quantity." $ remainingQuantity >= 0
 
           this2 <- create InventoryItem with quantity = remainingQuantity, ..
 
@@ -202,6 +202,7 @@ template InventoryQuote
     price: Decimal
   where
     signatory warehouse
+    observer supplier -- why do we need this??
 
 -- Supplier
 
@@ -292,14 +293,15 @@ template ChooseTransportBotTrigger
           let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
           locks <- foldlA (\ summedLocks pq -> do
               transportQuote <- fetch pq.transportQuoteCid
-              let inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == (fst transportQuote.item).productName) summedLocks.liveInventoryItems
+              let inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == (fst transportQuote.item).productName && (fst transportQuote.item).warehouse == (fst itemWithCid).warehouse) summedLocks.liveInventoryItems
               lockedTransportCapacity <- exercise pq.transportQuoteCid TransportQuote_Lock with quantity = pq.quantity
               let inventoryItemCid = snd inventoryItemWithCid
               (newInventoryCid, lockedInventoryCid) <- exercise inventoryItemCid $ InventoryItem_SplitAndLock with
                 quantityToLock = pq.quantity
                 workflowId = workflowId
               newInventory <- fetch newInventoryCid
-              let allocation = TransportedWarehouseAllocation with allocation = pq.allocation.allocation;  transportCompany = transportQuote.transportCompany; deliveryDate = (snd transportQuote.item).deliveryDate
+              let newAllocation = pq.allocation.allocation with quantity = pq.quantity
+                  allocation = TransportedWarehouseAllocation with allocation = newAllocation;  transportCompany = transportQuote.transportCompany; deliveryDate = (snd transportQuote.item).deliveryDate
                   prevLiveInventoriesWithoutArchived = filter (\inventoryItemWithCid -> (snd inventoryItemWithCid) /= inventoryItemCid) summedLocks.liveInventoryItems
                   updatedInventories = (newInventory, newInventoryCid) :: prevLiveInventoriesWithoutArchived
               return SummedLocks with liveInventoryItems = updatedInventories; locksSoFar = [((allocation, (snd transportQuote.item).price), lockedTransportCapacity, lockedInventoryCid)] ++ summedLocks.locksSoFar
@@ -389,7 +391,7 @@ template AggregatedQuote
   where
     signatory seller
     controller seller can
-      AggregatedQuote_AddMargin: (ContractId Quote, ContractId DeliveryAndPaymentPlan)
+      AggregatedQuote_AddMargin: ContractId Quote
         with
           margin: Decimal
         do
@@ -418,7 +420,7 @@ template AggregatedQuote
             items = deliveryItems, ..
           quote <- create Quote with
                   items = itemsWithMargin, ..
-          return (quote, deliveryPlanCid)
+          return quote
 
 
 data DeliveryPlanItem = DeliveryPlanItem with
@@ -628,13 +630,14 @@ template DeliveryComplete
     observer seller
 
     controller seller can
-      DeliveryComplete_Accept: ContractId DeliveryPayment
+      DeliveryComplete_Accept: (ContractId DeliveryPayment, ContractId PaymentObligation)
         do
           obligation <- exercise buyerPaymentRequestCid PaymentRequest_Pay
           supplierPaymentRequest <- fetch supplierPaymentRequestCid
           let supplier = supplierPaymentRequest.payee
           -- Payments to the warehouse and transportCompany should not be visible to buyer
-          create DeliveryPayment with ..
+          deliveryPayment <- create DeliveryPayment with ..
+          return (deliveryPayment, obligation)
 
 -- Facilitates to create the payment obligations of the seller.
 -- This contract is not visible to buyer, therefore payment to supplier can happen
@@ -714,7 +717,7 @@ bestPriceDelivery transportQuoteCids inventoryQuoteCids itemsToDeliver =
     let inventoryQuotesWithCid = zip inventoryQuotes inventoryQuoteCids
     let bestQuotes = map (\item  ->
           let productName = item.allocation.productName
-              transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
+              transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName && (fst (fst quoteWithCid).item).warehouse == item.allocation.warehouse) transportQuotesWithCid
               combinedQuotes = map (\transportQuoteWithCid ->
                   let transportQuoteCid = snd transportQuoteWithCid
                       transportQuote = fst transportQuoteWithCid
