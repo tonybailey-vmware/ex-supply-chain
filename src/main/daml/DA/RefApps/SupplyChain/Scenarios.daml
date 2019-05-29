@@ -160,21 +160,21 @@ fullScenario = scenario do
     exercise quote Quote_Accept
 
   -- Seller start the delivery process notifying all the participants of the process
-  [_delI1, _delI2, deliveryInstruction1, _delI4] <- submit seller do
+  [_delI1, _delI2, deliveryInstruction1] <- submit seller do
     exercise acceptedQuote Order_StartDelivery
 
-  passToDate $ date 2019 Dec 4
+  passToDate $ date 2019 Dec 7
 
   -- Transport company asks the warehouse for pickup acknowledgement
-  pickUpReq <- submit transportComp1 do
+  pickUpReq <- submit transportComp2 do
     exercise deliveryInstruction1 DeliveryInstruction_PickUp
 
   -- TODO: Check whether it is good to send the delivery acknowledgement request to the buyer from the warehouse (instead of the transport company)
   -- Warehouse acknowledges the pickup then asks for buyer's delivery acknowledgement
-  delivery1 <- submit warehouse1 do
+  delivery1 <- submit warehouse2 do
     exercise pickUpReq $ PickUpRequest_Accept
 
-  passToDate $ date 2019 Dec 5
+  passToDate $ date 2019 Dec 8
 
   -- Buyer ackowledges delivery and pays
   deliveryComplete <- submit buyer do
@@ -184,7 +184,7 @@ fullScenario = scenario do
   deliveryPayment <- submit seller do
     (deliveryPayment, buyerSellerObligationCid) <- exercise deliveryComplete DeliveryComplete_Accept
     buyerSellerObligation <- fetch buyerSellerObligationCid
-    buyerSellerObligation.price === 1826.0
+    buyerSellerObligation.price === 3204.3
     return deliveryPayment
 
   -- TODO: Ask whether it is OK to release transport capacity lock after payment
@@ -195,6 +195,6 @@ fullScenario = scenario do
     supplierWarehouseObligation <- fetch supplierWarehouseObligationCid
     supplierTransportObligation <- fetch supplierTransportObligationCid
     -- TODO: Insert real numbers
-    sellerSupplierObligation.price === 1660.0
-    supplierWarehouseObligation.price === 1650.0
-    supplierTransportObligation.price === 10.0
+    sellerSupplierObligation.price === 2913.0
+    supplierWarehouseObligation.price === 2900.0
+    supplierTransportObligation.price === 13.0
