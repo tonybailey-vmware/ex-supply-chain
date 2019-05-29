@@ -268,11 +268,11 @@ template TransportQuoteRequestPending
     signatory supplier
     controller supplier can
       -- Supplier waits no more, bot collects available TransportQuote-s
-      TransportQuoteRequestPending_ChooseTransport: ContractId ChooseTransportBotTrigger
+      TransportQuoteRequestPending_ChooseTransport: ContractId ChooseTransportAndWarehouseBotTrigger
         do
-          create ChooseTransportBotTrigger with ..
+          create ChooseTransportAndWarehouseBotTrigger with ..
 
-template ChooseTransportBotTrigger
+template ChooseTransportAndWarehouseBotTrigger
   with
     workflowId: WorkflowId
     supplier: Party
@@ -283,7 +283,7 @@ template ChooseTransportBotTrigger
   where
     signatory supplier
     controller supplier can
-      ChooseTransportBotTrigger_Proceed: ContractId AggregatedQuotePending
+      ChooseTransportAndWarehouseBotTrigger_Proceed: ContractId AggregatedQuotePending
         with
           transportQuoteCids: [ContractId TransportQuote]
           inventoryQuoteCids: [ContractId InventoryQuote]

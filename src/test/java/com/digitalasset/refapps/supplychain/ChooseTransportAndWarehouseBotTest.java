@@ -24,14 +24,15 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Test;
 import org.pcollections.HashTreePMap;
 
-public class ChooseTransportBotTest {
+public class ChooseTransportAndWarehouseBotTest {
 
   private static final String PARTY = "TESTPARTY";
 
   CommandsAndPendingSetBuilder.Factory commandBuilder =
       CommandsAndPendingSetBuilder.factory("appId", Clock::systemUTC, Duration.ofSeconds(5));
   private LedgerViewFlowable.LedgerTestView<Template> ledgerView;
-  private ChooseTransportBot bot = new ChooseTransportBot(commandBuilder, PARTY);
+  private ChooseTransportAndWarehouseBot bot =
+      new ChooseTransportAndWarehouseBot(commandBuilder, PARTY);
 
   @Test
   public void calculateCommands() {
@@ -44,8 +45,8 @@ public class ChooseTransportBotTest {
     QuoteRequest.ContractId otherQuoteId = new QuoteRequest.ContractId("Q2");
     WorkflowId otherWfId = new WorkflowId(otherQuoteId);
 
-    ChooseTransportBotTrigger trigger =
-        new ChooseTransportBotTrigger(
+    ChooseTransportAndWarehouseBotTrigger trigger =
+        new ChooseTransportAndWarehouseBotTrigger(
             wfId, "supplier", "buyer", "address", "seller", Collections.emptyList());
 
     Tuple2<WarehouseAllocation, TransportQuoteItem> item = new Tuple2(null, null);
@@ -58,7 +59,7 @@ public class ChooseTransportBotTest {
         new InventoryItem("warehouse", "supplier", "product", 1L, BigDecimal.ONE);
     ledgerView =
         ledgerView
-            .addActiveContract(ChooseTransportBotTrigger.TEMPLATE_ID, "cid-01", trigger)
+            .addActiveContract(ChooseTransportAndWarehouseBotTrigger.TEMPLATE_ID, "cid-01", trigger)
             .addActiveContract(TransportQuote.TEMPLATE_ID, "cid-02", tq)
             .addActiveContract(TransportQuote.TEMPLATE_ID, "cid-03", tq2)
             .addActiveContract(InventoryQuote.TEMPLATE_ID, "cid-04", invQ)
@@ -72,7 +73,8 @@ public class ChooseTransportBotTest {
         cmd -> {
           Optional<ExerciseCommand> exerciseCommand = cmd.asExerciseCommand();
           assertTrue(exerciseCommand.isPresent());
-          assertEquals("ChooseTransportBotTrigger_Proceed", exerciseCommand.get().getChoice());
+          assertEquals(
+              "ChooseTransportAndWarehouseBotTrigger_Proceed", exerciseCommand.get().getChoice());
         });
   }
 }

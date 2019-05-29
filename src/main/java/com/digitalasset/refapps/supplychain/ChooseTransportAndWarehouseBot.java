@@ -24,25 +24,25 @@ import java.util.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
-public class ChooseTransportBot {
+public class ChooseTransportAndWarehouseBot {
 
   private final Logger logger;
   private final CommandsAndPendingSetBuilder commandBuilder;
 
   public final TransactionFilter transactionFilter;
 
-  public ChooseTransportBot(
+  public ChooseTransportAndWarehouseBot(
       CommandsAndPendingSetBuilder.Factory commandBuilderFactory, String partyName) {
     String workflowId =
         "WORKFLOW-" + partyName + "-ChooseTransportBot-" + UUID.randomUUID().toString();
-    logger = BotLogger.getLogger(ChooseTransportBot.class, workflowId);
+    logger = BotLogger.getLogger(ChooseTransportAndWarehouseBot.class, workflowId);
 
     commandBuilder = commandBuilderFactory.create(partyName, workflowId);
 
     Filter messageFilter =
         new InclusiveFilter(
             Sets.newHashSet(
-                ChooseTransportBotTrigger.TEMPLATE_ID,
+                ChooseTransportAndWarehouseBotTrigger.TEMPLATE_ID,
                 TransportQuote.TEMPLATE_ID,
                 InventoryQuote.TEMPLATE_ID,
                 InventoryItem.TEMPLATE_ID));
@@ -56,12 +56,13 @@ public class ChooseTransportBot {
 
     CommandsAndPendingSetBuilder.Builder builder = commandBuilder.newBuilder();
 
-    Map<String, ChooseTransportBotTrigger> transportBotTriggers =
+    Map<String, ChooseTransportAndWarehouseBotTrigger> transportBotTriggers =
         filterTemplates(
-            ChooseTransportBotTrigger.class,
-            ledgerView.getContracts(ChooseTransportBotTrigger.TEMPLATE_ID));
+            ChooseTransportAndWarehouseBotTrigger.class,
+            ledgerView.getContracts(ChooseTransportAndWarehouseBotTrigger.TEMPLATE_ID));
 
-    for (Map.Entry<String, ChooseTransportBotTrigger> e : transportBotTriggers.entrySet()) {
+    for (Map.Entry<String, ChooseTransportAndWarehouseBotTrigger> e :
+        transportBotTriggers.entrySet()) {
       WorkflowId workflowId = e.getValue().workflowId;
 
       List<TransportQuote.ContractId> quoteCids =
@@ -93,8 +94,8 @@ public class ChooseTransportBot {
               .collect(Collectors.toList());
 
       builder.addCommand(
-          new ChooseTransportBotTrigger.ContractId(e.getKey())
-              .exerciseChooseTransportBotTrigger_Proceed(
+          new ChooseTransportAndWarehouseBotTrigger.ContractId(e.getKey())
+              .exerciseChooseTransportAndWarehouseBotTrigger_Proceed(
                   quoteCids, inventoryQuoteCids, inventoryItemCids));
     }
 
@@ -116,8 +117,8 @@ public class ChooseTransportBot {
 
   public Template getContractInfo(CreatedContract createdContract) {
     Record args = createdContract.getCreateArguments();
-    if (createdContract.getTemplateId().equals(ChooseTransportBotTrigger.TEMPLATE_ID)) {
-      return ChooseTransportBotTrigger.fromValue(args);
+    if (createdContract.getTemplateId().equals(ChooseTransportAndWarehouseBotTrigger.TEMPLATE_ID)) {
+      return ChooseTransportAndWarehouseBotTrigger.fromValue(args);
     } else if (createdContract.getTemplateId().equals(TransportQuote.TEMPLATE_ID)) {
       return TransportQuote.fromValue(args);
     } else if (createdContract.getTemplateId().equals(InventoryQuote.TEMPLATE_ID)) {
@@ -126,7 +127,7 @@ public class ChooseTransportBot {
       return InventoryItem.fromValue(args);
     } else {
       String msg =
-          "ERROR: ChooseTransportBot encountered an unknown contract of type "
+          "ERROR: ChooseTransportAndWarehouseBot encountered an unknown contract of type "
               + createdContract.getTemplateId();
       logger.error(msg);
       throw new IllegalStateException(msg);

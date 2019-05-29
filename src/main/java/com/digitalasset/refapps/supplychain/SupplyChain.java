@@ -28,7 +28,7 @@ public class SupplyChain {
   private static final AtomicReference<Clock> clock =
       new AtomicReference<>(Clock.fixed(Instant.ofEpochSecond(0), ZoneId.systemDefault()));
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     CliOptions options = CliOptions.parseArgs(args);
     //    MulticastProcessor<Instant> time = MulticastProcessor.create();
 
@@ -40,12 +40,13 @@ public class SupplyChain {
 
     logger.info("Sandbox is started on port: {}", options.getSandboxPort());
 
-    //    Flowable<Instant> clockFlowable =
-    //        client
-    //            .getTimeClient()
-    //            .getTime()
-    //            .doOnNext(ts -> logger.info("Received time change {}", ts))
-    //            .doOnNext(ts -> clock.set(Clock.fixed(ts, ZoneId.systemDefault())));
+    // We create a Flowable<Instant> clockFlowable to set the time
+    client
+        .getTimeClient()
+        .getTime()
+        .doOnNext(ts -> logger.info("Received time change {}", ts))
+        .doOnNext(ts -> clock.set(Clock.fixed(ts, ZoneId.systemDefault())))
+        .subscribe();
 
     Duration mrt = Duration.ofSeconds(10);
     CommandsAndPendingSetBuilder.Factory commandBuilderFactory =
@@ -60,14 +61,14 @@ public class SupplyChain {
         aggregatedQuoteBot::calculateCommands,
         aggregatedQuoteBot::getContractInfo);
 
-    ChooseTransportBot chooseTransportBot =
-        new ChooseTransportBot(commandBuilderFactory, SUPPLIER_PARTY);
+    ChooseTransportAndWarehouseBot chooseTransportAndWarehouseBot =
+        new ChooseTransportAndWarehouseBot(commandBuilderFactory, SUPPLIER_PARTY);
     Bot.wire(
         APPLICATION_ID,
         client,
-        chooseTransportBot.transactionFilter,
-        chooseTransportBot::calculateCommands,
-        chooseTransportBot::getContractInfo);
+        chooseTransportAndWarehouseBot.transactionFilter,
+        chooseTransportAndWarehouseBot::calculateCommands,
+        chooseTransportAndWarehouseBot::getContractInfo);
 
     DeliveryCompleteBot transportCapacityReleaseBot =
         new DeliveryCompleteBot(commandBuilderFactory, SELLER_PARTY);
@@ -77,6 +78,10 @@ public class SupplyChain {
         transportCapacityReleaseBot.transactionFilter,
         transportCapacityReleaseBot::calculateCommands,
         transportCapacityReleaseBot::getContractInfo);
+
+    logger.info("Welcome to Direct Asset Control Demo Application!");
+    logger.info("Press Ctrl+C (for Mac and Linux, Ctrl+Z on Windows) to shut down the program.");
+    Thread.currentThread().join();
   }
 
   public static void waitForSandbox(CliOptions options, DamlLedgerClient client) {

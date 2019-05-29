@@ -139,7 +139,7 @@ fullScenario = scenario do
   aggregatedQuotePending <- submit supplier do
     trigger <- exercise tranQuoteReqPending TransportQuoteRequestPending_ChooseTransport
     exercise trigger $
-      ChooseTransportBotTrigger_Proceed
+      ChooseTransportAndWarehouseBotTrigger_Proceed
         [transportQuoteT1W1, transportQuoteT1W2, transportQuoteT2W1, transportQuoteT2W2]
         [invReservationCid1, invReservationCid2]
         [setupData.inventoryW1P1Cid, setupData.inventoryW1P2Cid, setupData.inventoryW2P1Cid, setupData.inventoryW2P2Cid]
@@ -156,12 +156,12 @@ fullScenario = scenario do
     return quote
 
   -- Buyer accepts the quote
-  acceptedQuote <- submit buyer do
+  order <- submit buyer do
     exercise quote Quote_Accept
 
   -- Seller start the delivery process notifying all the participants of the process
   [_delI1, _delI2, deliveryInstruction1] <- submit seller do
-    exercise acceptedQuote Order_StartDelivery
+    exercise order Order_StartDelivery
 
   passToDate $ date 2019 Dec 7
 
