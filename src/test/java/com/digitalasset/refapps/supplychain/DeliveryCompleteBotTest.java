@@ -11,7 +11,10 @@ import com.daml.ledger.javaapi.data.Template;
 import com.daml.ledger.rxjava.components.LedgerViewFlowable;
 import com.daml.ledger.rxjava.components.helpers.CommandsAndPendingSet;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
-import da.refapps.supplychain.main.*;
+import da.refapps.supplychain.delivery.*;
+import da.refapps.supplychain.lock.*;
+import da.refapps.supplychain.payment.*;
+import da.refapps.supplychain.quoterequest.*;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Clock;
 import java.time.Duration;
@@ -48,7 +51,7 @@ public class DeliveryCompleteBotTest {
     PaymentRequest.ContractId supplierPayReq2 = new PaymentRequest.ContractId("cid-08");
 
     QuoteRequest.ContractId quoteId = new QuoteRequest.ContractId("Q1");
-    WorkflowId wfId = new WorkflowId(quoteId);
+    String wfId = quoteId.toString();
 
     DeliveryComplete tCrT1 =
         new DeliveryComplete(

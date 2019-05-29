@@ -10,8 +10,12 @@ import DA.Date
 import DA.Assert
 
 import DA.RefApps.SupplyChain.Scenarios
-import DA.RefApps.SupplyChain.Main
+import DA.RefApps.SupplyChain.Relationship
 import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Payment
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Aggregate
 
 lockedTransportCapacityHelper (workflowId: WorkflowId) (productName: Text) (delivery: Date) = scenario do
   buyer <- getParty "Buyer"
@@ -80,7 +84,8 @@ marginTest = scenario do
   quoteReq <- submit buyer do
     exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
                         products = [setupData.product01]
-  let workflowId = WorkflowId quoteReq
+  now <- getTime
+  let workflowId = show now
 
   (transportPayReq, lockTrans) <- lockedTransportCapacityHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
   (warehousePayReq, lockedInv) <- lockedInventoryItemHelper workflowId setupData.product01.productName
@@ -156,7 +161,9 @@ paymentTest = scenario do
   quoteReq <- submit buyer do
     exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
                         products = [setupData.product01]
-  let workflowId = WorkflowId quoteReq
+
+  now <- getTime
+  let workflowId = show now
 
   passToDate $ date 2019 Dec 1
 

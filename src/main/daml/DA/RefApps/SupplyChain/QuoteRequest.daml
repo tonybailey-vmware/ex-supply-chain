@@ -1,0 +1,285 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.QuoteRequest where
+
+import DA.Action
+import DA.List
+import DA.Optional
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Quote
+import DA.RefApps.SupplyChain.Aggregate
+
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Inventory
+
+template QuoteRequest
+  with
+    buyer: Party
+    buyerAddress: Text
+    seller  : Party
+    products: [OrderedProduct]
+  where
+    signatory buyer
+    controller seller can
+      QuoteRequest_Accept: ContractId QuoteRequestAccepted
+        do
+          now <- getTime
+          create QuoteRequestAccepted with
+            workflowId = show now, ..
+
+template QuoteRequestAccepted
+  with
+    workflowId: WorkflowId
+    buyer: Party
+    buyerAddress: Text
+    seller  : Party
+    products: [OrderedProduct]
+  where
+    signatory seller
+    controller seller can
+      QuoteRequestAccepted_SendToSupplier : ContractId QuoteRequestSupplyInvitation
+        with
+          supplier: Party
+        do
+          create QuoteRequestSupplyInvitation with supplier = supplier, ..
+
+template QuoteRequestSupplyInvitation
+  with
+    workflowId: WorkflowId
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    supplier: Party
+    products: [OrderedProduct]
+  where
+    signatory seller
+    controller supplier can
+      QuoteRequestSupplyInvitation_Accept : ContractId SupplyRequest
+        do
+          create SupplyRequest with ..
+
+-- Supplier can initiate the inventory reservation and transport quote collection with this template
+template SupplyRequest
+  with
+    workflowId: WorkflowId
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    supplier: Party
+    products: [OrderedProduct]
+  where
+    signatory seller, supplier
+    controller supplier can
+      SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryQuoteRequest], [ContractId TransportQuoteRequest])
+        with
+          warehouses: [Party]
+          transportCompanies: [Party]
+        do
+          (invRequests, allocations) <- fmap (unzip . concat) $ forA warehouses
+              (\w -> forA products
+                (\product -> do
+                  req <- create InventoryQuoteRequest with
+                    warehouse = w, ..
+                  let wa = WarehouseAllocationWithDates (WarehouseAllocation product.productName w product.quantity) product.deliveryFrom product.deliveryTo
+                  return (req, wa)))
+          quoteRequests <- fmap concat $ forA transportCompanies
+              (\tc -> forA allocations
+                (\allocations ->
+                  create TransportQuoteRequest with
+                    transportCompany = tc
+                    item = allocations, ..))
+
+          pending <- create TransportQuoteRequestPending with ..
+          return (pending, invRequests, quoteRequests)
+
+template InventoryQuoteRequest
+  with
+    workflowId: WorkflowId
+    warehouse: Party
+    supplier: Party
+    product: OrderedProduct
+  where
+    signatory supplier
+
+    controller warehouse can
+      InventoryQuoteRequest_Accept: ContractId InventoryQuote
+        with
+          inventoryItemCid: ContractId InventoryItem
+        do
+          item <- fetch inventoryItemCid
+          let reservedQuantity = min item.quantity product.quantity
+          create InventoryQuote with
+            quantity = reservedQuantity
+            price = item.unitPrice * intToDecimal reservedQuantity
+            productName = product.productName, ..
+
+template TransportQuoteRequest
+  with
+    workflowId: WorkflowId
+    transportCompany: Party
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    item: WarehouseAllocationWithDates
+  where
+    signatory supplier
+    controller transportCompany can
+      TransportQuoteRequest_Accept: ContractId TransportQuote
+        with
+          quoteItem: TransportQuoteItem
+        do
+          create TransportQuote with item = (item.allocation, quoteItem), ..
+
+template TransportQuoteRequestPending
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    products: [OrderedProduct]
+  where
+    signatory supplier
+    controller supplier can
+      -- Supplier waits no more, bot collects available TransportQuote-s
+      TransportQuoteRequestPending_ChooseTransport: ContractId ChooseTransportAndWarehouseBotTrigger
+        do
+          create ChooseTransportAndWarehouseBotTrigger with ..
+
+template ChooseTransportAndWarehouseBotTrigger
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    products: [OrderedProduct]
+  where
+    signatory supplier
+    controller supplier can
+      ChooseTransportAndWarehouseBotTrigger_Proceed: ContractId AggregatedQuotePending
+        with
+          transportQuoteCids: [ContractId TransportQuote]
+          inventoryQuoteCids: [ContractId InventoryQuote]
+          inventoryItemCids: [ContractId InventoryItem]
+        do
+          proportionalQuotes <- bestPriceDelivery transportQuoteCids inventoryQuoteCids products
+          inventoryItems <- forA inventoryItemCids fetch
+          let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
+          locks <- foldlA (\ summedLocks pq -> do
+              transportQuote <- fetch pq.transportQuoteCid
+              let inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == (fst transportQuote.item).productName && (fst transportQuote.item).warehouse == (fst itemWithCid).warehouse) summedLocks.liveInventoryItems
+              lockedTransportCapacity <- exercise pq.transportQuoteCid TransportQuote_Lock with quantity = pq.quantity
+              let inventoryItemCid = snd inventoryItemWithCid
+              (newInventoryCid, lockedInventoryCid) <- exercise inventoryItemCid $ InventoryItem_SplitAndLock with
+                quantityToLock = pq.quantity
+                workflowId = workflowId
+              newInventory <- fetch newInventoryCid
+              let prevLiveInventoriesWithoutArchived = filter (\inventoryItemWithCid -> (snd inventoryItemWithCid) /= inventoryItemCid) summedLocks.liveInventoryItems
+                  updatedInventories = (newInventory, newInventoryCid) :: prevLiveInventoriesWithoutArchived
+              return SummedLocks with
+                liveInventoryItems = updatedInventories
+                locksSoFar = [(pq.pricedTransportWithInventory, lockedTransportCapacity, lockedInventoryCid)] ++ summedLocks.locksSoFar
+              ) (SummedLocks with liveInventoryItems = inventoryItemsWithCid; locksSoFar = []) proportionalQuotes
+          create AggregatedQuotePending with
+            items = locks.locksSoFar, ..
+
+data SummedLocks =
+  SummedLocks {
+    liveInventoryItems: [(InventoryItem, ContractId InventoryItem)];
+    locksSoFar: [(TransportedWarehouseAllocationWithPrice, ContractId LockedTransportCapacity, ContractId LockedInventoryItem)]
+  } deriving (Eq, Show)
+
+data CombinedQuote =
+  CombinedQuote {
+    maxDeliveredQuantity: Int;
+    combinedUnitPrice: Decimal;
+    transportQuoteCid: ContractId TransportQuote;
+    inventoryQuoteCid: ContractId InventoryQuote;
+    productName: Text;
+    warehouse: Party;
+    transportCompany: Party;
+    deliveryDate: Date;
+    pickUpDate: Date
+  } deriving (Eq, Show)
+
+data ProportionalQuote =
+  ProportionalQuote {
+    quantity: Int;
+    transportQuoteCid: ContractId TransportQuote;
+    inventoryQuoteCid: ContractId InventoryQuote;
+    pricedTransportWithInventory: TransportedWarehouseAllocationWithPrice
+  } deriving (Eq, Show)
+
+bestPriceDelivery: [ContractId TransportQuote] ->
+                  [ContractId InventoryQuote] ->
+                  [OrderedProduct]->
+                  Update [ProportionalQuote]
+bestPriceDelivery transportQuoteCids inventoryQuoteCids products =
+  do
+    transportQuotes <- forA transportQuoteCids fetch
+    let transportQuotesWithCid = zip transportQuotes transportQuoteCids
+    inventoryQuotes <- forA inventoryQuoteCids fetch
+    let inventoryQuotesWithCid = zip inventoryQuotes inventoryQuoteCids
+    let bestQuotes = map (\product  ->
+          let productName = product.productName
+              transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
+              combinedQuotes = map (\transportQuoteWithCid ->
+                  let transportQuoteCid = snd transportQuoteWithCid
+                      transportQuote = fst transportQuoteWithCid
+                      transportQuantity = (snd transportQuote.item).transportableQuantity
+                      transportUnitPrice = (snd transportQuote.item).price / (intToDecimal transportQuantity)
+                      matchingInventoryQuote = listToOptional $ filter (\quoteWithCid -> (fst quoteWithCid).productName == productName && (fst quoteWithCid).warehouse == (fst transportQuote.item).warehouse) inventoryQuotesWithCid
+
+                      combinedQuote = fmap (\ inventoryQuoteWithCid ->
+                          let inventoryQuoteCid = snd inventoryQuoteWithCid
+                              inventoryQuote = fst inventoryQuoteWithCid
+                              warehouseQuantity = inventoryQuote.quantity
+                              maxDeliveredQuantity = min warehouseQuantity transportQuantity
+                              warehouseUnitPrice = inventoryQuote.price / (intToDecimal warehouseQuantity)
+                              combinedUnitPrice = warehouseUnitPrice + transportUnitPrice
+                          in CombinedQuote with
+                            maxDeliveredQuantity = maxDeliveredQuantity
+                            combinedUnitPrice = combinedUnitPrice
+                            transportQuoteCid = transportQuoteCid
+                            inventoryQuoteCid = inventoryQuoteCid
+                            productName = productName
+                            warehouse = inventoryQuote.warehouse
+                            transportCompany = transportQuote.transportCompany
+                            deliveryDate = (snd transportQuote.item).deliveryDate
+                            pickUpDate = (snd transportQuote.item).pickUpDate
+                          ) matchingInventoryQuote
+                  in optionalToList combinedQuote
+                  ) transportQuotesForProduct
+              bestQuotes = bestQuotesForQuantity product.quantity (concat combinedQuotes)
+          in bestQuotes
+          ) products
+    return (concat bestQuotes)
+
+data SummedQuotes =
+  SummedQuotes {
+    sumSoFar: Int;
+    quotesSoFar: [ProportionalQuote]
+  } deriving (Eq, Show)
+
+bestQuotesForQuantity: Int ->
+                  [CombinedQuote] ->
+                  [ProportionalQuote]
+bestQuotesForQuantity quantity combinedQuotes =
+  let sortedQuotes = sortOn combinedUnitPrice combinedQuotes
+      quotesForQuantity = foldl (\ summedQuotes actQuote ->
+          let missing = quantity - summedQuotes.sumSoFar
+              toBeAdded = min missing actQuote.maxDeliveredQuantity
+              price = actQuote.combinedUnitPrice * intToDecimal toBeAdded
+              warehouseAllocation = WarehouseAllocation with productName = actQuote.productName; warehouse = actQuote.warehouse; quantity = toBeAdded
+              transportWithInventory = TransportedWarehouseAllocation with allocation = warehouseAllocation; transportCompany = actQuote.transportCompany; deliveryDate = actQuote.deliveryDate; pickUpDate = actQuote.pickUpDate
+              pricedTransportWithInventory = (transportWithInventory, price)
+              newQuote = ProportionalQuote with quantity = toBeAdded; transportQuoteCid = actQuote.transportQuoteCid; inventoryQuoteCid = actQuote.inventoryQuoteCid; pricedTransportWithInventory = pricedTransportWithInventory
+              next = if (toBeAdded > 0) then SummedQuotes with sumSoFar = toBeAdded + summedQuotes.sumSoFar; quotesSoFar = newQuote :: summedQuotes.quotesSoFar else summedQuotes
+          in next
+          ) (SummedQuotes with sumSoFar = 0; quotesSoFar = []) sortedQuotes
+  in quotesForQuantity.quotesSoFar

@@ -12,7 +12,7 @@ import com.daml.ledger.rxjava.components.helpers.CreatedContract;
 import com.digitalasset.refapps.supplychain.util.BotLogger;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import com.google.common.collect.Sets;
-import da.refapps.supplychain.main.DeliveryComplete;
+import da.refapps.supplychain.delivery.DeliveryComplete;
 import io.reactivex.Flowable;
 import java.util.Collections;
 import java.util.Map;

@@ -12,7 +12,7 @@ import com.daml.ledger.rxjava.components.helpers.CreatedContract;
 import com.digitalasset.refapps.supplychain.util.BotLogger;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import com.google.common.collect.Sets;
-import da.refapps.supplychain.main.*;
+import da.refapps.supplychain.aggregate.*;
 import io.reactivex.Flowable;
 import java.util.*;
 import org.slf4j.Logger;

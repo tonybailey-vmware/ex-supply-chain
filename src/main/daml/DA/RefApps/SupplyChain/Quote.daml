@@ -1,0 +1,76 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Quote where
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Order
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Payment
+
+template InventoryQuote
+  with
+    workflowId: WorkflowId
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    price: Decimal
+  where
+    signatory warehouse
+    observer supplier -- why do we need this??
+
+data TransportQuoteItem = TransportQuoteItem with
+    transportableQuantity: Int
+    price: Decimal -- total price corresponding to transportableQuantity
+    pickUpDate: Date
+    deliveryDate: Date
+  deriving (Eq, Show)
+
+template TransportQuote
+  with
+    workflowId: WorkflowId
+    transportCompany: Party
+    supplier: Party
+    item: (WarehouseAllocation, TransportQuoteItem)
+  where
+    signatory supplier, transportCompany
+
+    controller supplier can
+      TransportQuote_Lock: ContractId LockedTransportCapacity
+        with
+          quantity: Int
+        do
+          transportPaymentRequestCid <- create PaymentRequest with
+                price = (snd item).price * (intToDecimal quantity) / intToDecimal (snd item).transportableQuantity
+                payer = supplier
+                payee = transportCompany
+          let newAllocation = (fst item) with quantity = quantity
+          create LockedTransportCapacity with
+                workflowId = workflowId
+                transportCompany = transportCompany
+                supplier = supplier
+                item = newAllocation
+                deliveryDate = (snd item).deliveryDate
+                transportPaymentRequestCid = transportPaymentRequestCid
+
+template Quote
+  with
+    workflowId: WorkflowId
+    seller: Party
+    buyer: Party
+    buyerAddress: Text
+    deliveryPlanCid: ContractId DeliveryAndPaymentPlan
+    items: [PricedWarehouseAllocation]
+    totalPrice: Decimal
+  where
+    signatory seller
+    observer buyer
+
+    controller buyer can
+      Quote_Accept: ContractId Order
+        do
+          create Order with ..

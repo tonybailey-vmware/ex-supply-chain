@@ -11,7 +11,9 @@ import com.daml.ledger.javaapi.data.Template;
 import com.daml.ledger.rxjava.components.LedgerViewFlowable;
 import com.daml.ledger.rxjava.components.helpers.CommandsAndPendingSet;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
-import da.refapps.supplychain.main.*;
+import da.refapps.supplychain.aggregate.*;
+import da.refapps.supplychain.delivery.*;
+import da.refapps.supplychain.quoterequest.*;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Clock;
 import java.time.Duration;
@@ -41,7 +43,7 @@ public class AggregatedQuoteBotTest {
     DeliveryPlan.ContractId dCoid2 = new DeliveryPlan.ContractId("cid-02");
 
     QuoteRequest.ContractId quoteId = new QuoteRequest.ContractId("Q1");
-    WorkflowId wfId = new WorkflowId(quoteId);
+    String wfId = quoteId.toString();
 
     AggregatedQuoteTrigger aQt1 =
         new AggregatedQuoteTrigger(

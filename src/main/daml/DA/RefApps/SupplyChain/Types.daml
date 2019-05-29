@@ -39,3 +39,5 @@ data PricedWarehouseAllocation = PricedWarehouseAllocation with
 
 type TransportedWarehouseAllocationWithPrice = (TransportedWarehouseAllocation, Decimal)
 type ProductWithQuantity = (Text, Int)
+
+type WorkflowId = Text

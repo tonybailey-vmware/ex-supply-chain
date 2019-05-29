@@ -1,0 +1,35 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Relationship where
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.QuoteRequest
+
+template BuyerSellerRelationshipInvitation
+  with
+    buyer : Party
+    buyerAddress: Text
+    seller: Party
+  where
+    signatory buyer
+    controller seller can
+      BuyerSellerRelationshipInvitation_Accept: ContractId BuyerSellerRelationship
+        do
+          create $ BuyerSellerRelationship with ..
+
+template BuyerSellerRelationship
+  with
+    buyer : Party
+    buyerAddress: Text
+    seller: Party
+  where
+    signatory buyer, seller
+    controller buyer can
+      nonconsuming BuyerSellerRelationship_SendQuoteRequest: ContractId QuoteRequest
+        with
+          products: [OrderedProduct]
+        do
+          create $ QuoteRequest with ..

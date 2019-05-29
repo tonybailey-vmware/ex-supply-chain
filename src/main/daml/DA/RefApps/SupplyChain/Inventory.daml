@@ -1,0 +1,39 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Inventory where
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Payment
+
+template InventoryItem
+  with
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    unitPrice: Decimal
+  where
+    signatory warehouse
+    observer supplier
+    controller supplier can
+      InventoryItem_SplitAndLock: (ContractId InventoryItem, ContractId LockedInventoryItem)
+        with
+          quantityToLock: Int
+          workflowId: WorkflowId
+        do
+          let remainingQuantity = quantity - quantityToLock
+          assertMsg "Negative remaining quantity." $ remainingQuantity >= 0
+
+          this2 <- create InventoryItem with quantity = remainingQuantity, ..
+
+          warehousePaymentRequestCid <- create PaymentRequest with
+            payer = supplier
+            payee = warehouse
+            price = unitPrice * intToDecimal quantityToLock
+
+          locked <- create LockedInventoryItem with quantity = quantityToLock, .. --TODO
+          return (this2, locked)

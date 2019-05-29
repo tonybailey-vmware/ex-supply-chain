@@ -1,0 +1,103 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Aggregate where
+
+import DA.Optional
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Payment
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Quote
+
+template AggregatedQuotePending
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    items: [(TransportedWarehouseAllocationWithPrice, ContractId LockedTransportCapacity, ContractId LockedInventoryItem)]
+  where
+    signatory supplier
+
+    controller supplier can
+      AggregatedQuotePending_SendQuoteToSeller: ContractId AggregatedQuoteTrigger
+        do
+          --TODO: check if locks correspond to items
+
+          deliveryItems <- forA items (\((alloc, price), ltc, lii) -> do
+            supplierPayment <- create PaymentRequest with
+              payer = seller
+              payee = supplier
+              price = price
+            return $ DeliveryPlanItem alloc ltc lii supplierPayment)
+          let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items
+          deliveryPlanCid <- create DeliveryPlan with
+            items = deliveryItems, ..
+          create AggregatedQuoteTrigger with
+            items = quoteItems, ..
+
+template AggregatedQuoteTrigger
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    items: [PricedWarehouseAllocation]
+    deliveryPlanCid: ContractId DeliveryPlan
+  where
+    signatory supplier
+
+    controller seller can
+      AggregatedQuoteTrigger_Execute: ContractId AggregatedQuote
+        do
+          create AggregatedQuote with ..
+
+-- Aggregated quote ready for sending to buyer and adding the margin before that
+template AggregatedQuote
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    items: [PricedWarehouseAllocation]
+    deliveryPlanCid: ContractId DeliveryPlan
+  where
+    signatory seller
+    controller seller can
+      AggregatedQuote_AddMargin: ContractId Quote
+        with
+          margin: Decimal
+        do
+          let itemsWithMargin = map (\i -> i with price = i.price * (1.0 + margin)) items
+          let totalPrice = foldl (\price i -> price + i.price) 0.0 itemsWithMargin
+          deliveryPlan <- fetch deliveryPlanCid
+          deliveryItems <- forA deliveryPlan.items (\item -> do
+              let pricedItemOpt = find
+                    (\i -> i.allocation.productName == item.allocation.allocation.productName && i.allocation.warehouse == item.allocation.allocation.warehouse)
+                    itemsWithMargin
+              assertMsg ("Corresponding quote item not found for " <> item.allocation.allocation.productName) $ isSome pricedItemOpt
+              let pricedItem = fromSome pricedItemOpt
+
+              req <- create PaymentRequest with
+                price = pricedItem.price
+                payer = buyer
+                payee = seller
+              return DeliveryAndPaymentPlanItem with
+                allocation = item.allocation
+                transportCapacityLockCid = item.transportCapacityLockCid
+                buyerPaymentRequestCid = req
+                supplierPaymentRequestCid = item.supplierPaymentRequestCid
+                lockedInventoryItemCid = item.lockedInventoryItemCid
+            )
+          deliveryPlanCid <- create DeliveryAndPaymentPlan with
+            items = deliveryItems, ..
+          quote <- create Quote with
+                  items = itemsWithMargin, ..
+          return quote

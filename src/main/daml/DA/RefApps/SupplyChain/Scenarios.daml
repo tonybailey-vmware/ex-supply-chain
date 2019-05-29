@@ -8,8 +8,14 @@ module DA.RefApps.SupplyChain.Scenarios where
 import DA.Date
 import DA.Assert
 
-import DA.RefApps.SupplyChain.Main
+import DA.RefApps.SupplyChain.Relationship
 import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Inventory
+import DA.RefApps.SupplyChain.Quote
+import DA.RefApps.SupplyChain.QuoteRequest
+import DA.RefApps.SupplyChain.Aggregate
+import DA.RefApps.SupplyChain.Order
 
 data SetupData = SetupData with
     buyerRoleCid: ContractId BuyerSellerRelationship

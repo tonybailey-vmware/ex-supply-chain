@@ -1,0 +1,39 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Lock where
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Payment
+
+template LockedInventoryItem
+  with
+    workflowId: WorkflowId
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    unitPrice: Decimal
+    warehousePaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory warehouse
+    observer supplier
+
+template LockedTransportCapacity
+  with
+    workflowId: WorkflowId
+    transportCompany: Party
+    supplier: Party
+    item: WarehouseAllocation
+    deliveryDate: Date
+    transportPaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory transportCompany
+    observer supplier
+
+    controller supplier can
+      LockedTransportCapacity_ReleaseAndPay: ContractId PaymentObligation
+        do
+          exercise transportPaymentRequestCid PaymentRequest_Pay

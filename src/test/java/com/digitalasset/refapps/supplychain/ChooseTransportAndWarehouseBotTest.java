@@ -11,7 +11,9 @@ import com.daml.ledger.javaapi.data.Template;
 import com.daml.ledger.rxjava.components.LedgerViewFlowable;
 import com.daml.ledger.rxjava.components.helpers.CommandsAndPendingSet;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
-import da.refapps.supplychain.main.*;
+import da.refapps.supplychain.inventory.*;
+import da.refapps.supplychain.quote.*;
+import da.refapps.supplychain.quoterequest.*;
 import da.refapps.supplychain.types.WarehouseAllocation;
 import da.types.Tuple2;
 import java.math.BigDecimal;
@@ -41,9 +43,9 @@ public class ChooseTransportAndWarehouseBotTest {
             HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty());
 
     QuoteRequest.ContractId quoteId = new QuoteRequest.ContractId("Q1");
-    WorkflowId wfId = new WorkflowId(quoteId);
+    String wfId = quoteId.toString();
     QuoteRequest.ContractId otherQuoteId = new QuoteRequest.ContractId("Q2");
-    WorkflowId otherWfId = new WorkflowId(otherQuoteId);
+    String otherWfId = otherQuoteId.toString();
 
     ChooseTransportAndWarehouseBotTrigger trigger =
         new ChooseTransportAndWarehouseBotTrigger(

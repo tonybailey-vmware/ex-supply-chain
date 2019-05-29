@@ -18,7 +18,9 @@ import com.daml.ledger.rxjava.components.helpers.CreatedContract;
 import com.digitalasset.refapps.supplychain.util.BotLogger;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import com.google.common.collect.Sets;
-import da.refapps.supplychain.main.*;
+import da.refapps.supplychain.inventory.*;
+import da.refapps.supplychain.quote.*;
+import da.refapps.supplychain.quoterequest.*;
 import io.reactivex.Flowable;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -63,7 +65,7 @@ public class ChooseTransportAndWarehouseBot {
 
     for (Map.Entry<String, ChooseTransportAndWarehouseBotTrigger> e :
         transportBotTriggers.entrySet()) {
-      WorkflowId workflowId = e.getValue().workflowId;
+      String workflowId = e.getValue().workflowId;
 
       List<TransportQuote.ContractId> quoteCids =
           filterTemplatesWith(
