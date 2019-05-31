@@ -20,12 +20,12 @@ jobs:
             - m2
       - run:
           command: |
-            wget https://github.com/digital-asset/daml/releases/download/v0.12.20/daml-sdk-0.12.20-linux.tar.gz
-            tar -zxvf daml-sdk-0.12.20-linux.tar.gz
-            cd sdk-0.12.20
+            wget https://github.com/digital-asset/daml/releases/download/v0.12.21/daml-sdk-0.12.21-linux.tar.gz
+            tar -zxvf daml-sdk-0.12.21-linux.tar.gz
+            cd sdk-0.12.21
             ./install.sh
             cd -
-            rm -rf sdk-0.12.20
+            rm -rf sdk-0.12.21
             export PATH=/home/circleci/.daml/bin:$PATH
             mvn verify
       - save_cache:
@@ -47,9 +47,9 @@ jobs:
       - run:
           command: |
             mkdir -p target/daml-test-reports
-            wget https://github.com/digital-asset/daml/releases/download/v0.12.20/daml-sdk-0.12.20-linux.tar.gz
-            tar -zxvf daml-sdk-0.12.20-linux.tar.gz
-            cd sdk-0.12.20
+            wget https://github.com/digital-asset/daml/releases/download/v0.12.21/daml-sdk-0.12.21-linux.tar.gz
+            tar -zxvf daml-sdk-0.12.21-linux.tar.gz
+            cd sdk-0.12.21
             ./install.sh
             cd -
             /home/circleci/.daml/bin/daml build -o target/supplychain.dar
