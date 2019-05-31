@@ -72,7 +72,7 @@ template SupplyRequest
     supplier: Party
     products: [OrderedProduct]
   where
-    signatory seller, supplier
+    signatory supplier
     controller supplier can
       SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryQuoteRequest], [ContractId TransportQuoteRequest])
         with
@@ -132,6 +132,7 @@ template TransportQuoteRequest
         with
           quoteItem: TransportQuoteItem
         do
+          assertMsg "Transportable quantity cannot be greater than the requested quantity" $ quoteItem.transportableQuantity <= item.allocation.quantity
           create TransportQuote with item = (item.allocation, quoteItem), ..
 
 template TransportQuoteRequestPending
