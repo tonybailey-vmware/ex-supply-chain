@@ -168,7 +168,7 @@ template ChooseTransportAndWarehouseBotTrigger
           inventoryQuoteCids: [ContractId InventoryQuote]
           inventoryItemCids: [ContractId InventoryItem]
         do
-          proportionalQuotes <- bestPriceDelivery transportQuoteCids inventoryQuoteCids products
+          proportionalQuotes <- bestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids
           inventoryItems <- forA inventoryItemCids fetch
           let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
           locks <- foldlA (\ summedLocks pq -> do
@@ -205,7 +205,8 @@ data CombinedQuote =
     warehouse: Party;
     transportCompany: Party;
     deliveryDate: Date;
-    pickUpDate: Date
+    pickUpDate: Date;
+    inventorySize: Int
   } deriving (Eq, Show)
 
 data ProportionalQuote =
@@ -219,13 +220,15 @@ data ProportionalQuote =
 bestPriceDelivery: [ContractId TransportQuote] ->
                   [ContractId InventoryQuote] ->
                   [OrderedProduct]->
+                  [ContractId InventoryItem] ->
                   Update [ProportionalQuote]
-bestPriceDelivery transportQuoteCids inventoryQuoteCids products =
+bestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids =
   do
     transportQuotes <- forA transportQuoteCids fetch
     let transportQuotesWithCid = zip transportQuotes transportQuoteCids
     inventoryQuotes <- forA inventoryQuoteCids fetch
     let inventoryQuotesWithCid = zip inventoryQuotes inventoryQuoteCids
+    inventoryItems <- forA inventoryItemCids fetch
     let bestQuotes = map (\product  ->
           let productName = product.productName
               transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
@@ -235,6 +238,7 @@ bestPriceDelivery transportQuoteCids inventoryQuoteCids products =
                       transportQuantity = (snd transportQuote.item).transportableQuantity
                       transportUnitPrice = (snd transportQuote.item).price / (intToDecimal transportQuantity)
                       matchingInventoryQuote = listToOptional $ filter (\quoteWithCid -> (fst quoteWithCid).productName == productName && (fst quoteWithCid).warehouse == (fst transportQuote.item).warehouse) inventoryQuotesWithCid
+                      matchingInventoryItem = head $ filter (\inventoryItem -> inventoryItem.productName == productName && inventoryItem.warehouse == (fst transportQuote.item).warehouse) inventoryItems
 
                       combinedQuote = fmap (\ inventoryQuoteWithCid ->
                           let inventoryQuoteCid = snd inventoryQuoteWithCid
@@ -253,6 +257,7 @@ bestPriceDelivery transportQuoteCids inventoryQuoteCids products =
                             transportCompany = transportQuote.transportCompany
                             deliveryDate = (snd transportQuote.item).deliveryDate
                             pickUpDate = (snd transportQuote.item).pickUpDate
+                            inventorySize = matchingInventoryItem.quantity
                           ) matchingInventoryQuote
                   in optionalToList combinedQuote
                   ) transportQuotesForProduct
@@ -273,8 +278,10 @@ bestQuotesForQuantity: Int ->
 bestQuotesForQuantity quantity combinedQuotes =
   let sortedQuotes = sortOn combinedUnitPrice combinedQuotes
       quotesForQuantity = foldl (\ summedQuotes actQuote ->
-          let missing = quantity - summedQuotes.sumSoFar
-              toBeAdded = min missing actQuote.maxDeliveredQuantity
+          let quotesForWarehouseSoFar = sum $ map (\pq -> pq.quantity) (filter (\pq -> (fst pq.pricedTransportWithInventory).allocation.warehouse ==  actQuote.warehouse) summedQuotes.quotesSoFar)
+              missing = quantity - summedQuotes.sumSoFar
+              maxRemainingInventoryForWarehouse = actQuote.inventorySize - quotesForWarehouseSoFar
+              toBeAdded = min (min missing actQuote.maxDeliveredQuantity) maxRemainingInventoryForWarehouse
               price = actQuote.combinedUnitPrice * intToDecimal toBeAdded
               warehouseAllocation = WarehouseAllocation with productName = actQuote.productName; warehouse = actQuote.warehouse; quantity = toBeAdded
               transportWithInventory = TransportedWarehouseAllocation with allocation = warehouseAllocation; transportCompany = actQuote.transportCompany; deliveryDate = actQuote.deliveryDate; pickUpDate = actQuote.pickUpDate
