@@ -29,6 +29,10 @@ template DeliveryPlan
     signatory supplier
     observer seller
 
+    controller seller can
+      DeliveryPlan_Archive: ()
+        do return ()
+
 data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
     transportableWarehouseProduct: TransportableWarehouseProduct
     transportCommitmentCid: ContractId TransportCommitment

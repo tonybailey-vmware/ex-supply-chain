@@ -96,6 +96,7 @@ template AggregatedQuote
                 supplierPaymentRequestCid = item.supplierPaymentRequestCid
                 lockedInventoryItemCid = item.lockedInventoryItemCid
             )
+          exercise deliveryPlanCid DeliveryPlan_Archive
           deliveryPlanCid <- create DeliveryAndPaymentPlan with
             items = deliveryItems, ..
           quote <- create QuoteForBuyer with

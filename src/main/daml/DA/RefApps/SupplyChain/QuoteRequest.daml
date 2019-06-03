@@ -168,7 +168,7 @@ template CalculateAggregatedQuoteBotTrigger
           inventoryQuoteCids: [ContractId InventoryQuote]
           inventoryItemCids: [ContractId InventoryItem]
         do
-          proportionalQuotes <- bestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids
+          (proportionalQuotes, unusedQuotes) <- calculateBestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids
           inventoryItems <- forA inventoryItemCids fetch
           let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
           locks <- foldlA (\ summedLocks pq -> do
@@ -186,6 +186,9 @@ template CalculateAggregatedQuoteBotTrigger
                 liveInventoryItems = updatedInventories
                 locksSoFar = [(pq.pricedTransportWithInventory, transportCommitment, lockedInventoryCid)] ++ summedLocks.locksSoFar
               ) (SummedLocks with liveInventoryItems = inventoryItemsWithCid; locksSoFar = []) proportionalQuotes
+          -- archive unused quotes
+          forA unusedQuotes (\uq -> exercise uq.transportQuoteCid TransportQuote_Archive)
+          forA inventoryQuoteCids (\cid -> exercise cid InventoryQuote_Archive)
           create AggregatedQuotePending with
             items = locks.locksSoFar, ..
 
@@ -217,19 +220,24 @@ data ProportionalQuote =
     pricedTransportWithInventory: TransportableWarehouseProductWithPrice
   } deriving (Eq, Show)
 
-bestPriceDelivery: [ContractId TransportQuote] ->
-                  [ContractId InventoryQuote] ->
-                  [OrderedProduct]->
-                  [ContractId InventoryItem] ->
-                  Update [ProportionalQuote]
-bestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids =
+data UnusedQuotes =
+  UnusedQuotes {
+    transportQuoteCid: ContractId TransportQuote
+  } deriving (Eq, Show)
+
+calculateBestPriceDelivery: [ContractId TransportQuote] ->
+                            [ContractId InventoryQuote] ->
+                            [OrderedProduct]->
+                            [ContractId InventoryItem] ->
+                            Update ([ProportionalQuote], [UnusedQuotes])
+calculateBestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids =
   do
     transportQuotes <- forA transportQuoteCids fetch
     let transportQuotesWithCid = zip transportQuotes transportQuoteCids
     inventoryQuotes <- forA inventoryQuoteCids fetch
     let inventoryQuotesWithCid = zip inventoryQuotes inventoryQuoteCids
     inventoryItems <- forA inventoryItemCids fetch
-    let bestQuotes = map (\product  ->
+    let (bestQuotes, unusedQuotes) = unzip $ map (\product  ->
           let productName = product.productName
               transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
               combinedQuotes = map (\transportQuoteWithCid ->
@@ -261,33 +269,46 @@ bestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCi
                           ) matchingInventoryQuote
                   in optionalToList combinedQuote
                   ) transportQuotesForProduct
-              bestQuotes = bestQuotesForQuantity product.quantity (concat combinedQuotes)
-          in bestQuotes
+              (bestQuotes, unusedQuotes) = bestQuotesForQuantity product.quantity (concat combinedQuotes)
+          in (bestQuotes, unusedQuotes)
           ) products
-    return (concat bestQuotes)
+    return (concat bestQuotes, concat unusedQuotes)
 
 data SummedQuotes =
   SummedQuotes {
     sumSoFar: Int;
-    quotesSoFar: [ProportionalQuote]
+    quotesSoFar: [ProportionalQuote];
+    unusedQuotes: [UnusedQuotes]
   } deriving (Eq, Show)
 
 bestQuotesForQuantity: Int ->
                   [CombinedQuote] ->
-                  [ProportionalQuote]
+                  ([ProportionalQuote], [UnusedQuotes])
 bestQuotesForQuantity quantity combinedQuotes =
   let sortedQuotes = sortOn combinedUnitPrice combinedQuotes
       quotesForQuantity = foldl (\ summedQuotes actQuote ->
-          let quotesForWarehouseSoFar = sum $ map (\pq -> pq.quantity) (filter (\pq -> (fst pq.pricedTransportWithInventory).warehouseProduct.warehouse ==  actQuote.warehouse) summedQuotes.quotesSoFar)
+          let quotesForWarehouseSoFar = sum $ map
+                (\pq -> pq.quantity)
+                (filter (\pq -> (fst pq.pricedTransportWithInventory).warehouseProduct.warehouse ==  actQuote.warehouse)
+                summedQuotes.quotesSoFar)
               missing = quantity - summedQuotes.sumSoFar
               maxRemainingInventoryForWarehouse = actQuote.inventorySize - quotesForWarehouseSoFar
               toBeAdded = min (min missing actQuote.maxDeliveredQuantity) maxRemainingInventoryForWarehouse
               price = actQuote.combinedUnitPrice * intToDecimal toBeAdded
-              warehouseProduct = WarehouseProduct with productName = actQuote.productName; warehouse = actQuote.warehouse; quantity = toBeAdded
-              transportWithInventory = TransportableWarehouseProduct with warehouseProduct = warehouseProduct; transportCompany = actQuote.transportCompany; deliveryDate = actQuote.deliveryDate; pickUpDate = actQuote.pickUpDate
+              warehouseProduct = WarehouseProduct with
+                productName = actQuote.productName; warehouse = actQuote.warehouse; quantity = toBeAdded
+              transportWithInventory = TransportableWarehouseProduct with
+                warehouseProduct = warehouseProduct; transportCompany = actQuote.transportCompany; deliveryDate = actQuote.deliveryDate; pickUpDate = actQuote.pickUpDate
               pricedTransportWithInventory = (transportWithInventory, price)
-              newQuote = ProportionalQuote with quantity = toBeAdded; transportQuoteCid = actQuote.transportQuoteCid; inventoryQuoteCid = actQuote.inventoryQuoteCid; pricedTransportWithInventory = pricedTransportWithInventory
-              next = if (toBeAdded > 0) then SummedQuotes with sumSoFar = toBeAdded + summedQuotes.sumSoFar; quotesSoFar = newQuote :: summedQuotes.quotesSoFar else summedQuotes
+              newQuote = ProportionalQuote with
+                quantity = toBeAdded
+                transportQuoteCid = actQuote.transportQuoteCid
+                inventoryQuoteCid = actQuote.inventoryQuoteCid
+                pricedTransportWithInventory = pricedTransportWithInventory
+              next = if (toBeAdded > 0) then
+                  SummedQuotes with sumSoFar = toBeAdded + summedQuotes.sumSoFar; quotesSoFar = newQuote :: summedQuotes.quotesSoFar; unusedQuotes = []
+                else summedQuotes with
+                  unusedQuotes = (UnusedQuotes with transportQuoteCid = actQuote.transportQuoteCid) :: summedQuotes.unusedQuotes
           in next
-          ) (SummedQuotes with sumSoFar = 0; quotesSoFar = []) sortedQuotes
-  in quotesForQuantity.quotesSoFar
+          ) (SummedQuotes 0 [] []) sortedQuotes
+  in (quotesForQuantity.quotesSoFar, quotesForQuantity.unusedQuotes)

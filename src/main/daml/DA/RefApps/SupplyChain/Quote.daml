@@ -21,7 +21,11 @@ template InventoryQuote
     price: Decimal
   where
     signatory warehouse
-    observer supplier -- why do we need this??
+    observer supplier
+
+    controller supplier can
+      InventoryQuote_Archive: ()
+        do return ()
 
 data TransportQuoteItem = TransportQuoteItem with
     transportableQuantity: Int
@@ -56,6 +60,10 @@ template TransportQuote
                 warehouseProduct = warehouseProduct
                 deliveryDate = (snd item).deliveryDate
                 transportPaymentRequestCid = transportPaymentRequestCid
+
+    controller supplier can
+      TransportQuote_Archive: ()
+        do return ()
 
 template QuoteForBuyer
   with

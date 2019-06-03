@@ -82,6 +82,8 @@ setup = scenario do
         quantity = 100
         unitPrice = 65.0
 
+  passToDate $ date 2019 Jun 3
+
   return SetupData with
     buyerRoleCid = buyerRole, ..
 
@@ -119,9 +121,9 @@ fullScenario = scenario do
 
   -- Transport companies submit their transport quotes
   let
-    transportQuoteItemT1_1 = TransportQuoteItem 25 25.0 (date 2019 Dec 4) (date 2019 Dec 5)
-    transportQuoteItemT1_2 = TransportQuoteItem 50 50.0 (date 2019 Dec 6) (date 2019 Dec 8)
-    transportQuoteItemT2_1 = TransportQuoteItem 50 100.0 (date 2019 Dec 3) (date 2019 Dec 5)
+    transportQuoteItemT1_1 = TransportQuoteItem 25 25.0 (date 2019 Dec 3) (date 2019 Dec 7)
+    transportQuoteItemT1_2 = TransportQuoteItem 50 50.0 (date 2019 Dec 5) (date 2019 Dec 8)
+    transportQuoteItemT2_1 = TransportQuoteItem 50 100.0 (date 2019 Dec 4) (date 2019 Dec 7)
     transportQuoteItemT2_2 = TransportQuoteItem 100 200.0 (date 2019 Dec 7) (date 2019 Dec 8)
   transportQuoteT1W1 <- submit transportComp1 do
     exercise transportQuoteRequestT1W1 $ TransportQuoteRequest_Accept transportQuoteItemT1_1
@@ -166,41 +168,69 @@ fullScenario = scenario do
     exercise quote Quote_Accept
 
   -- Seller start the delivery process notifying all the participants of the process
-  [_delI1, _delI2, deliveryInstruction1] <- submit seller do
+  [deliveryInstruction1, deliveryInstruction2, deliveryInstruction3] <- submit seller do
     exercise order Order_StartDelivery
 
-  passToDate $ date 2019 Dec 6
+  passToDate $ date 2019 Dec 3
 
   -- Transport company asks the warehouse for pickup acknowledgement
-  pickUpReq <- submit transportComp1 do
+  pickUpReq1 <- submit transportComp1 do
     exercise deliveryInstruction1 DeliveryInstruction_PickUp
+
+  passToDate $ date 2019 Dec 4
+
+  pickUpReq2 <- submit transportComp2 do
+    exercise deliveryInstruction2 DeliveryInstruction_PickUp
+
+  passToDate $ date 2019 Dec 5
+
+  pickUpReq3 <- submit transportComp1 do
+    exercise deliveryInstruction3 DeliveryInstruction_PickUp
 
   -- TODO: Check whether it is good to send the delivery acknowledgement request to the buyer from the warehouse (instead of the transport company)
   -- Warehouse acknowledges the pickup then asks for buyer's delivery acknowledgement
-  delivery1 <- submit warehouse2 do
-    exercise pickUpReq $ PickUpRequest_Accept
+  (delivery1, delivery2) <- submit warehouse1 do
+    d1 <- exercise pickUpReq1 PickUpRequest_Accept
+    d2 <- exercise pickUpReq2 PickUpRequest_Accept
+    return (d1, d2)
+
+  delivery3 <- submit warehouse2 do
+    exercise pickUpReq3 PickUpRequest_Accept
+
+  passToDate $ date 2019 Dec 7
+
+  -- Buyer ackowledges delivery and pays
+  (deliveryComplete1, deliveryComplete2) <- submit buyer do
+    dc1 <- exercise delivery1 Delivery_Acknowledge
+    dc2 <- exercise delivery2 Delivery_Acknowledge
+    return (dc1, dc2)
 
   passToDate $ date 2019 Dec 8
 
-  -- Buyer ackowledges delivery and pays
-  deliveryComplete <- submit buyer do
-    exercise delivery1 Delivery_Acknowledge
+  deliveryComplete3 <- submit buyer do
+    exercise delivery3 Delivery_Acknowledge
 
   -- Transport company acknowledges delivery as well finishing it and releasing capacity
-  deliveryPayment <- submit seller do
-    (deliveryPayment, buyerSellerObligationCid) <- exercise deliveryComplete DeliveryComplete_Accept
-    buyerSellerObligation <- fetch buyerSellerObligationCid
-    buyerSellerObligation.price === 3245.0
-    return deliveryPayment
+  (deliveryPayment1, deliveryPayment2, deliveryPayment3) <- submit seller do
+    (deliveryPayment1, _) <- exercise deliveryComplete1 DeliveryComplete_Accept
+    (deliveryPayment2, _) <- exercise deliveryComplete2 DeliveryComplete_Accept
+    (deliveryPayment3, buyerSellerObligationCid3) <- exercise deliveryComplete3 DeliveryComplete_Accept
+    buyerSellerObligation3 <- fetch buyerSellerObligationCid3
+    buyerSellerObligation3.price === 3245.0
+    return (deliveryPayment1, deliveryPayment2, deliveryPayment3)
 
   -- TODO: Ask whether it is OK to release transport capacity lock after payment
   submit supplier do
-    (deliverySupplierPayment, sellerSupplierObligationCid) <- exercise deliveryPayment DeliveryPayment_Accept
-    (supplierWarehouseObligationCid, supplierTransportObligationCid) <- exercise deliverySupplierPayment DeliverySupplierPayment_Pay
-    sellerSupplierObligation <- fetch sellerSupplierObligationCid
-    supplierWarehouseObligation <- fetch supplierWarehouseObligationCid
-    supplierTransportObligation <- fetch supplierTransportObligationCid
+    (deliverySupplierPayment1, _) <- exercise deliveryPayment1 DeliveryPayment_Accept
+    (deliverySupplierPayment2, _) <- exercise deliveryPayment2 DeliveryPayment_Accept
+    (deliverySupplierPayment3, sellerSupplierObligationCid3) <- exercise deliveryPayment3 DeliveryPayment_Accept
+    (supplierWarehouseObligationCid1, _) <- exercise deliverySupplierPayment1 DeliverySupplierPayment_Pay
+    (supplierWarehouseObligationCid2, _) <- exercise deliverySupplierPayment2 DeliverySupplierPayment_Pay
+    (supplierWarehouseObligationCid3, supplierTransportObligationCid3) <- exercise deliverySupplierPayment3 DeliverySupplierPayment_Pay
+    sellerSupplierObligation3 <- fetch sellerSupplierObligationCid3
+    supplierWarehouseObligation3 <- fetch supplierWarehouseObligationCid3
+    supplierTransportObligation3 <- fetch supplierTransportObligationCid3
     -- TODO: Insert real numbers
-    sellerSupplierObligation.price === 2950.0
-    supplierWarehouseObligation.price === 2900.0
-    supplierTransportObligation.price === 50.0
+    sellerSupplierObligation3.price === 2950.0
+    supplierWarehouseObligation3.price === 2900.0
+    supplierTransportObligation3.price === 50.0
