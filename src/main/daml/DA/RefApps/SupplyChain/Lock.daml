@@ -21,12 +21,12 @@ template LockedInventoryItem
     signatory warehouse
     observer supplier
 
-template LockedTransportCapacity
+template TransportCommitment
   with
     workflowId: WorkflowId
     transportCompany: Party
     supplier: Party
-    item: WarehouseAllocation
+    warehouseProduct: WarehouseProduct
     deliveryDate: Date
     transportPaymentRequestCid: ContractId PaymentRequest
   where
@@ -34,6 +34,6 @@ template LockedTransportCapacity
     observer supplier
 
     controller supplier can
-      LockedTransportCapacity_ReleaseAndPay: ContractId PaymentObligation
+      TransportCommitment_ReleaseAndPay: ContractId PaymentObligation
         do
           exercise transportPaymentRequestCid PaymentRequest_Pay

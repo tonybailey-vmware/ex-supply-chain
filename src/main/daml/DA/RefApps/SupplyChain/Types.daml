@@ -13,31 +13,31 @@ data OrderedProduct =
     deliveryTo: Date
   } deriving (Eq, Show)
 
-data WarehouseAllocation = WarehouseAllocation with
+data WarehouseProduct = WarehouseProduct with
     productName: Text
     warehouse: Party
     quantity: Int
   deriving (Eq, Show)
 
-data WarehouseAllocationWithDates = WarehouseAllocationWithDates with
-    allocation: WarehouseAllocation
+data WarehouseProductWithDates = WarehouseProductWithDates with
+    warehouseProduct: WarehouseProduct
     deliveryFrom: Date
     deliveryTo: Date
   deriving (Eq, Show)
 
-data TransportedWarehouseAllocation = TransportedWarehouseAllocation with
-    allocation: WarehouseAllocation
+data TransportableWarehouseProduct = TransportableWarehouseProduct with
+    warehouseProduct: WarehouseProduct
     transportCompany: Party
     pickUpDate: Date
     deliveryDate: Date
   deriving (Eq, Show)
 
-data PricedWarehouseAllocation = PricedWarehouseAllocation with
-    allocation: WarehouseAllocation
+data PricedWarehouseProduct = PricedWarehouseProduct with
+    warehouseProduct: WarehouseProduct
     price: Decimal
   deriving (Eq, Show)
 
-type TransportedWarehouseAllocationWithPrice = (TransportedWarehouseAllocation, Decimal)
+type TransportableWarehouseProductWithPrice = (TransportableWarehouseProduct, Decimal)
 type ProductWithQuantity = (Text, Int)
 
 type WorkflowId = Text

@@ -14,7 +14,7 @@ import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
 import da.refapps.supplychain.inventory.*;
 import da.refapps.supplychain.quote.*;
 import da.refapps.supplychain.quoterequest.*;
-import da.refapps.supplychain.types.WarehouseAllocation;
+import da.refapps.supplychain.types.WarehouseProduct;
 import da.types.Tuple2;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -26,15 +26,14 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Test;
 import org.pcollections.HashTreePMap;
 
-public class ChooseTransportAndWarehouseBotTest {
+public class CalculateAggregatedQuoteBotTest {
 
   private static final String PARTY = "TESTPARTY";
 
   CommandsAndPendingSetBuilder.Factory commandBuilder =
       CommandsAndPendingSetBuilder.factory("appId", Clock::systemUTC, Duration.ofSeconds(5));
   private LedgerViewFlowable.LedgerTestView<Template> ledgerView;
-  private ChooseTransportAndWarehouseBot bot =
-      new ChooseTransportAndWarehouseBot(commandBuilder, PARTY);
+  private CalculateAggregatedQuoteBot bot = new CalculateAggregatedQuoteBot(commandBuilder, PARTY);
 
   @Test
   public void calculateCommands() {
@@ -47,11 +46,11 @@ public class ChooseTransportAndWarehouseBotTest {
     QuoteRequest.ContractId otherQuoteId = new QuoteRequest.ContractId("Q2");
     String otherWfId = otherQuoteId.toString();
 
-    ChooseTransportAndWarehouseBotTrigger trigger =
-        new ChooseTransportAndWarehouseBotTrigger(
+    CalculateAggregatedQuoteBotTrigger trigger =
+        new CalculateAggregatedQuoteBotTrigger(
             wfId, "supplier", "buyer", "address", "seller", Collections.emptyList());
 
-    Tuple2<WarehouseAllocation, TransportQuoteItem> item = new Tuple2(null, null);
+    Tuple2<WarehouseProduct, TransportQuoteItem> item = new Tuple2(null, null);
 
     TransportQuote tq = new TransportQuote(wfId, "transportCompany", "supplier", item);
     TransportQuote tq2 = new TransportQuote(otherWfId, "transportCompany", "supplier", item);
@@ -61,7 +60,7 @@ public class ChooseTransportAndWarehouseBotTest {
         new InventoryItem("warehouse", "supplier", "product", 1L, BigDecimal.ONE);
     ledgerView =
         ledgerView
-            .addActiveContract(ChooseTransportAndWarehouseBotTrigger.TEMPLATE_ID, "cid-01", trigger)
+            .addActiveContract(CalculateAggregatedQuoteBotTrigger.TEMPLATE_ID, "cid-01", trigger)
             .addActiveContract(TransportQuote.TEMPLATE_ID, "cid-02", tq)
             .addActiveContract(TransportQuote.TEMPLATE_ID, "cid-03", tq2)
             .addActiveContract(InventoryQuote.TEMPLATE_ID, "cid-04", invQ)
@@ -76,7 +75,7 @@ public class ChooseTransportAndWarehouseBotTest {
           Optional<ExerciseCommand> exerciseCommand = cmd.asExerciseCommand();
           assertTrue(exerciseCommand.isPresent());
           assertEquals(
-              "ChooseTransportAndWarehouseBotTrigger_Proceed", exerciseCommand.get().getChoice());
+              "CalculateAggregatedQuoteBotTrigger_Proceed", exerciseCommand.get().getChoice());
         });
   }
 }
