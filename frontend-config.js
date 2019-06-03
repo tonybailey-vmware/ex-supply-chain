@@ -65,6 +65,15 @@ const inventoryQuoteRequestView = createTab("Inventory Quote Reqest", ":Inventor
     createCol("deliveryTo", "Delvery To", 40, r => r.product.deliveryTo)
 ])
 
+const inventoryQuoteView = createTab("Intentory Quote", ':InventoryQuote@', [
+    createCol("workflowId"),
+    createCol("supplier"),
+    createCol("warehouse"),
+    createCol("productName"),
+    createCol("quantity"),
+    createCol("price")
+])
+
 const transportQuoteRequestView = createTab("Transport Quote Request", ":TransportQuoteRequest@", [
     createCol("workflowId"),
     createCol("supplier"),
@@ -76,6 +85,18 @@ const transportQuoteRequestView = createTab("Transport Quote Request", ":Transpo
     createCol("warehouse", "Warehouse", 80, r => r.item.warehouseProduct.warehouse),
     createCol("deliveryFrom", "Delivery From", 40, r => r.item.deliveryFrom),
     createCol("deliveryTo", "Delvery To", 40, r => r.item.deliveryTo)
+])
+
+const transportQuoteView = createTab("Transport Quote", ":TransportQuote@", [
+    createCol("workflowId"),
+    createCol("supplier"),
+    createCol("transportCompany"),
+    createCol("productName", "Product Name", 80, r => r.item._1.productName),
+    createCol("quantity", "Quantity", 80, r => r.item._1.quantity),
+    createCol("transportableQuantity", "Transportable Quantity", 80, r => r.item._2.transportableQuantity),
+    createCol("price", "Price", 80, r => r.item._2.price),
+    createCol("pickUpDate", "Pickup Date", 80, r => r.item._2.pickUpDate),
+    createCol("deliveryDate", "Delivery Date", 80, r => r.item._2.deliveryDate)
 ])
 
 const transportQuoteRequestPendingView = createTab("Pending Quote Request", ":TransportQuoteRequestPending@", [
@@ -95,7 +116,7 @@ const lockedInventoryItemView = createTab("Locked Inventory", ":LockedInventoryI
     createCol("unitPrice")
 ])
 
-const transportCommitmentView = createTab("Locked Transport Capacity", ":TransportCommitment@", [
+const transportCommitmentView = createTab("Transport Capacity Commitment", ":TransportCommitment@", [
     createCol("workflowId"),
     createCol("supplier"),
     createCol("productName", "Product Name", 80, r => r.warehouseProduct.productName),
@@ -120,7 +141,7 @@ const aggregatedQuoteView = createTab("Aggregated Quote", ":AggregatedQuote@", [
     createCol("items", "Items", 80, r => r.items.length + " items"),
 ])
 
-const quoteForBuyerView = createTab("QuoteForBuyer", ":QuoteForBuyer@", [
+const quoteForBuyerView = createTab("Received Quote", ":QuoteForBuyer@", [
     createCol("workflowId"),
     createCol("buyer"),
     createCol("buyerAddress"),
@@ -213,6 +234,8 @@ export const customViews = (userId, party, role) => {
             lockedInventoryItemView,
             quoteRequestSupplyInvitation,
             supplyRequestView,
+            inventoryQuoteView,
+            transportQuoteView,
             transportQuoteRequestPendingView,
             aggregatedQuotePendingView,
             deliveryPaymentView,
