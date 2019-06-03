@@ -90,6 +90,13 @@
             <artifactId>codegen</artifactId>
             <version>${daml-sdk.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.digitalasset.daml</groupId>
+            <artifactId>functest_2.12</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+        </dependency>
+
     </dependencies>
 
     <build>
