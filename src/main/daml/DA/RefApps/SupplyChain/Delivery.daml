@@ -12,8 +12,8 @@ import DA.RefApps.SupplyChain.Payment
 import DA.RefApps.SupplyChain.Lock
 
 data DeliveryPlanItem = DeliveryPlanItem with
-    allocation: TransportedWarehouseAllocation
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportableWarehouseProduct: TransportableWarehouseProduct
+    transportCommitmentCid: ContractId TransportCommitment
     lockedInventoryItemCid: ContractId LockedInventoryItem
     supplierPaymentRequestCid: ContractId PaymentRequest
   deriving (Eq, Show)
@@ -30,8 +30,8 @@ template DeliveryPlan
     observer seller
 
 data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
-    allocation: TransportedWarehouseAllocation
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportableWarehouseProduct: TransportableWarehouseProduct
+    transportCommitmentCid: ContractId TransportCommitment
     lockedInventoryItemCid: ContractId LockedInventoryItem
     buyerPaymentRequestCid: ContractId PaymentRequest
     supplierPaymentRequestCid: ContractId PaymentRequest
@@ -52,16 +52,16 @@ template DeliveryAndPaymentPlan
       DeliveryPlan_Start: [ContractId DeliveryInstruction]
         do
           forA items (\item -> create DeliveryInstruction with
-              productName = item.allocation.allocation.productName
-              warehouse = item.allocation.allocation.warehouse
-              quantity = item.allocation.allocation.quantity
-              transportCompany = item.allocation.transportCompany
-              transportCapacityLockCid = item.transportCapacityLockCid
+              productName = item.transportableWarehouseProduct.warehouseProduct.productName
+              warehouse = item.transportableWarehouseProduct.warehouseProduct.warehouse
+              quantity = item.transportableWarehouseProduct.warehouseProduct.quantity
+              transportCompany = item.transportableWarehouseProduct.transportCompany
+              transportCommitmentCid = item.transportCommitmentCid
               lockedInventoryItemCid = item.lockedInventoryItemCid
               buyerPaymentRequestCid = item.buyerPaymentRequestCid
               supplierPaymentRequestCid = item.supplierPaymentRequestCid
-              pickUpDate = item.allocation.pickUpDate
-              deliveryDate = item.allocation.deliveryDate, ..
+              pickUpDate = item.transportableWarehouseProduct.pickUpDate
+              deliveryDate = item.transportableWarehouseProduct.deliveryDate, ..
             )
 
 template DeliveryInstruction
@@ -74,7 +74,7 @@ template DeliveryInstruction
     warehouse: Party
     quantity: Int
     transportCompany: Party
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportCommitmentCid: ContractId TransportCommitment
     lockedInventoryItemCid: ContractId LockedInventoryItem
     buyerPaymentRequestCid: ContractId PaymentRequest
     supplierPaymentRequestCid: ContractId PaymentRequest
@@ -104,7 +104,7 @@ template Delivery
     quantity: Int
     warehouse: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportCommitmentCid: ContractId TransportCommitment
     buyerPaymentRequestCid: ContractId PaymentRequest
     supplierPaymentRequestCid: ContractId PaymentRequest
     warehousePaymentRequestCid: ContractId PaymentRequest
@@ -129,7 +129,7 @@ template DeliveryComplete
     buyer: Party
     seller: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportCommitmentCid: ContractId TransportCommitment
     buyerPaymentRequestCid: ContractId PaymentRequest
     supplierPaymentRequestCid: ContractId PaymentRequest
     warehousePaymentRequestCid: ContractId PaymentRequest
@@ -155,7 +155,7 @@ template DeliveryPayment
     supplier: Party
     seller: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportCommitmentCid: ContractId TransportCommitment
     supplierPaymentRequestCid: ContractId PaymentRequest
     warehousePaymentRequestCid: ContractId PaymentRequest
   where
@@ -175,7 +175,7 @@ template DeliverySupplierPayment
     workflowId: WorkflowId
     supplier: Party
     transportCompany: Party
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportCommitmentCid: ContractId TransportCommitment
     supplierPaymentRequestCid: ContractId PaymentRequest
     warehousePaymentRequestCid: ContractId PaymentRequest
   where
@@ -185,7 +185,7 @@ template DeliverySupplierPayment
       DeliverySupplierPayment_Pay: (ContractId PaymentObligation, ContractId PaymentObligation)
         do
           wo <- exercise warehousePaymentRequestCid PaymentRequest_Pay
-          to <- exercise transportCapacityLockCid LockedTransportCapacity_ReleaseAndPay
+          to <- exercise transportCommitmentCid TransportCommitment_ReleaseAndPay
           return (wo, to)
 
 template PickUpRequest
@@ -198,7 +198,7 @@ template PickUpRequest
     warehouse: Party
     quantity: Int
     transportCompany: Party
-    transportCapacityLockCid: ContractId LockedTransportCapacity
+    transportCommitmentCid: ContractId TransportCommitment
     lockedInventoryItemCid: ContractId LockedInventoryItem
     buyerPaymentRequestCid: ContractId PaymentRequest
     supplierPaymentRequestCid: ContractId PaymentRequest

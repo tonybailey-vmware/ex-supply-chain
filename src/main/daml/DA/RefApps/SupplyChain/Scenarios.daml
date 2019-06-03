@@ -145,7 +145,7 @@ fullScenario = scenario do
   aggregatedQuotePending <- submit supplier do
     trigger <- exercise tranQuoteReqPending TransportQuoteRequestPending_ChooseTransport
     exercise trigger $
-      ChooseTransportAndWarehouseBotTrigger_Proceed
+      CalculateAggregatedQuoteBotTrigger_Proceed
         [transportQuoteT1W1, transportQuoteT1W2, transportQuoteT2W1, transportQuoteT2W2]
         [invReservationCid1, invReservationCid2]
         [setupData.inventoryW1P1Cid, setupData.inventoryW1P2Cid, setupData.inventoryW2P1Cid, setupData.inventoryW2P2Cid]

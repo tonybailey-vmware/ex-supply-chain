@@ -20,7 +20,7 @@ template AggregatedQuotePending
     buyer: Party
     buyerAddress: Text
     seller: Party
-    items: [(TransportedWarehouseAllocationWithPrice, ContractId LockedTransportCapacity, ContractId LockedInventoryItem)]
+    items: [(TransportableWarehouseProductWithPrice, ContractId TransportCommitment, ContractId LockedInventoryItem)]
   where
     signatory supplier
 
@@ -35,7 +35,7 @@ template AggregatedQuotePending
               payee = supplier
               price = price
             return $ DeliveryPlanItem alloc ltc lii supplierPayment)
-          let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseAllocation alloc.allocation price) items
+          let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseProduct alloc.warehouseProduct price) items
           deliveryPlanCid <- create DeliveryPlan with
             items = deliveryItems, ..
           create AggregatedQuoteTrigger with
@@ -48,7 +48,7 @@ template AggregatedQuoteTrigger
     buyer: Party
     buyerAddress: Text
     seller: Party
-    items: [PricedWarehouseAllocation]
+    items: [PricedWarehouseProduct]
     deliveryPlanCid: ContractId DeliveryPlan
   where
     signatory supplier
@@ -66,12 +66,12 @@ template AggregatedQuote
     buyer: Party
     buyerAddress: Text
     seller: Party
-    items: [PricedWarehouseAllocation]
+    items: [PricedWarehouseProduct]
     deliveryPlanCid: ContractId DeliveryPlan
   where
     signatory seller
     controller seller can
-      AggregatedQuote_AddMargin: ContractId Quote
+      AggregatedQuote_AddMargin: ContractId QuoteForBuyer
         with
           margin: Decimal
         do
@@ -80,9 +80,9 @@ template AggregatedQuote
           deliveryPlan <- fetch deliveryPlanCid
           deliveryItems <- forA deliveryPlan.items (\item -> do
               let pricedItemOpt = find
-                    (\i -> i.allocation.productName == item.allocation.allocation.productName && i.allocation.warehouse == item.allocation.allocation.warehouse)
+                    (\i -> i.warehouseProduct.productName == item.transportableWarehouseProduct.warehouseProduct.productName && i.warehouseProduct.warehouse == item.transportableWarehouseProduct.warehouseProduct.warehouse)
                     itemsWithMargin
-              assertMsg ("Corresponding quote item not found for " <> item.allocation.allocation.productName) $ isSome pricedItemOpt
+              assertMsg ("Corresponding quote item not found for " <> item.transportableWarehouseProduct.warehouseProduct.productName) $ isSome pricedItemOpt
               let pricedItem = fromSome pricedItemOpt
 
               req <- create PaymentRequest with
@@ -90,14 +90,14 @@ template AggregatedQuote
                 payer = buyer
                 payee = seller
               return DeliveryAndPaymentPlanItem with
-                allocation = item.allocation
-                transportCapacityLockCid = item.transportCapacityLockCid
+                transportableWarehouseProduct = item.transportableWarehouseProduct
+                transportCommitmentCid = item.transportCommitmentCid
                 buyerPaymentRequestCid = req
                 supplierPaymentRequestCid = item.supplierPaymentRequestCid
                 lockedInventoryItemCid = item.lockedInventoryItemCid
             )
           deliveryPlanCid <- create DeliveryAndPaymentPlan with
             items = deliveryItems, ..
-          quote <- create Quote with
+          quote <- create QuoteForBuyer with
                   items = itemsWithMargin, ..
           return quote

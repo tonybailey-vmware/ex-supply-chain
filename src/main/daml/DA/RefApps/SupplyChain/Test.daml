@@ -17,7 +17,7 @@ import DA.RefApps.SupplyChain.Lock
 import DA.RefApps.SupplyChain.Delivery
 import DA.RefApps.SupplyChain.Aggregate
 
-lockedTransportCapacityHelper (workflowId: WorkflowId) (productName: Text) (delivery: Date) = scenario do
+transportCommitmentHelper (workflowId: WorkflowId) (productName: Text) (delivery: Date) = scenario do
   buyer <- getParty "Buyer"
   seller <- getParty "Seller"
   supplier <- getParty "Supplier"
@@ -33,12 +33,12 @@ lockedTransportCapacityHelper (workflowId: WorkflowId) (productName: Text) (deli
       price = 0.1
 
   lockTrans <- submit transportComp1 do
-    create LockedTransportCapacity with
+    create TransportCommitment with
       workflowId = workflowId
       transportCompany = transportComp1
       supplier = supplier
       deliveryDate = delivery
-      item = (WarehouseAllocation productName warehouse1 55)
+      warehouseProduct = (WarehouseProduct productName warehouse1 55)
       transportPaymentRequestCid = transportPayReq
 
   return (transportPayReq, lockTrans)
@@ -87,7 +87,7 @@ marginTest = scenario do
   now <- getTime
   let workflowId = show now
 
-  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
+  (transportPayReq, lockTrans) <- transportCommitmentHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
   (warehousePayReq, lockedInv) <- lockedInventoryItemHelper workflowId setupData.product01.productName
 
   supplierPayReq <- submit supplier do
@@ -97,14 +97,14 @@ marginTest = scenario do
       price = 11.1
 
   let
-    wAllocation1 = WarehouseAllocation setupData.product01.productName warehouse1 44
-    wAllocation2 = WarehouseAllocation setupData.product01.productName warehouse2 22
-    transportedWAllocation1 = TransportedWarehouseAllocation wAllocation1 transportComp1 setupData.product01.deliveryFrom setupData.product01.deliveryFrom
-    transportedWAllocation2 = TransportedWarehouseAllocation wAllocation2 transportComp2 setupData.product01.deliveryFrom setupData.product01.deliveryFrom
-    deliveryPlanItem1 = DeliveryPlanItem transportedWAllocation1 lockTrans lockedInv supplierPayReq
-    deliveryPlanItem2 = DeliveryPlanItem transportedWAllocation2 lockTrans lockedInv supplierPayReq
-    pricedWAllocation1 = PricedWarehouseAllocation wAllocation1 11.1
-    pricedWAllocation2 = PricedWarehouseAllocation wAllocation2 23.0
+    warehouseProduct1 = WarehouseProduct setupData.product01.productName warehouse1 44
+    warehouseProduct2 = WarehouseProduct setupData.product01.productName warehouse2 22
+    transportableWarehouseProduct1 = TransportableWarehouseProduct warehouseProduct1 transportComp1 setupData.product01.deliveryFrom setupData.product01.deliveryFrom
+    transportableWarehouseProduct2 = TransportableWarehouseProduct warehouseProduct2 transportComp2 setupData.product01.deliveryFrom setupData.product01.deliveryFrom
+    deliveryPlanItem1 = DeliveryPlanItem transportableWarehouseProduct1 lockTrans lockedInv supplierPayReq
+    deliveryPlanItem2 = DeliveryPlanItem transportableWarehouseProduct2 lockTrans lockedInv supplierPayReq
+    pricedWarehouseProduct1 = PricedWarehouseProduct warehouseProduct1 11.1
+    pricedWarehouseProduct2 = PricedWarehouseProduct warehouseProduct2 23.0
 
   plan <- submit supplier do
     create DeliveryPlan with
@@ -121,7 +121,7 @@ marginTest = scenario do
       buyer = buyer
       buyerAddress = "none"
       seller = seller
-      items = [pricedWAllocation1, pricedWAllocation2]
+      items = [pricedWarehouseProduct1, pricedWarehouseProduct2]
       deliveryPlanCid = plan
 
   quoteCid <- submit seller do
@@ -131,7 +131,7 @@ marginTest = scenario do
   quote.totalPrice === (11.1 * 1.1) + (23.0 * 1.1)
   (length quote.items) === 2
   let firstItem = head quote.items
-  assertMsg "Product name is wrong" $ all (\i -> i.allocation.productName == setupData.product01.productName) quote.items
+  assertMsg "Product name is wrong" $ all (\i -> i.warehouseProduct.productName == setupData.product01.productName) quote.items
   firstItem.price === (11.1 * 1.1)
 
   let secondItem = head (tail quote.items)
@@ -139,7 +139,7 @@ marginTest = scenario do
 
   deliveryPlan <- submit seller do fetch quote.deliveryPlanCid
   (length quote.items) === 2
-  assertMsg "Product name is wrong" $ all (\i -> i.allocation.allocation.productName == setupData.product01.productName) deliveryPlan.items
+  assertMsg "Product name is wrong" $ all (\i -> i.transportableWarehouseProduct.warehouseProduct.productName == setupData.product01.productName) deliveryPlan.items
   let firstDeliv = head deliveryPlan.items
   firstSupplierPayReq <- submit supplier do fetch firstDeliv.supplierPaymentRequestCid
   firstSupplierPayReq.price === 11.1
@@ -167,7 +167,7 @@ paymentTest = scenario do
 
   passToDate $ date 2019 Dec 1
 
-  (transportPayReq, lockTrans) <- lockedTransportCapacityHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
+  (transportPayReq, lockTrans) <- transportCommitmentHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
 
   buyerPayReq <- submit seller do
     create PaymentRequest with
@@ -193,7 +193,7 @@ paymentTest = scenario do
       quantity = 1
       warehouse = warehouse1
       transportCompany = transportComp1
-      transportCapacityLockCid = lockTrans
+      transportCommitmentCid = lockTrans
       buyerPaymentRequestCid = buyerPayReq
       supplierPaymentRequestCid = supplierPayReq
       lockedInventoryItemCid = lockedInv

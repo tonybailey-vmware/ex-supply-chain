@@ -61,14 +61,14 @@ public class SupplyChain {
         aggregatedQuoteBot::calculateCommands,
         aggregatedQuoteBot::getContractInfo);
 
-    ChooseTransportAndWarehouseBot chooseTransportAndWarehouseBot =
-        new ChooseTransportAndWarehouseBot(commandBuilderFactory, SUPPLIER_PARTY);
+    CalculateAggregatedQuoteBot calculateAggregatedQuoteBot =
+        new CalculateAggregatedQuoteBot(commandBuilderFactory, SUPPLIER_PARTY);
     Bot.wire(
         APPLICATION_ID,
         client,
-        chooseTransportAndWarehouseBot.transactionFilter,
-        chooseTransportAndWarehouseBot::calculateCommands,
-        chooseTransportAndWarehouseBot::getContractInfo);
+        calculateAggregatedQuoteBot.transactionFilter,
+        calculateAggregatedQuoteBot::calculateCommands,
+        calculateAggregatedQuoteBot::getContractInfo);
 
     DeliveryCompleteBot transportCapacityReleaseBot =
         new DeliveryCompleteBot(commandBuilderFactory, SELLER_PARTY);

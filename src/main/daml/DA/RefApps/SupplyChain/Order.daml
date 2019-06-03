@@ -9,7 +9,7 @@ import DA.RefApps.SupplyChain.Types
 import DA.RefApps.SupplyChain.Delivery
 
 -- Represents the obligation of seller to delivery the products in deliveryPlan
-template Order
+template ConfirmedOrder
   with
     workflowId: WorkflowId
     seller: Party

@@ -39,10 +39,8 @@ public class DeliveryCompleteBotTest {
         new LedgerViewFlowable.LedgerTestView(
             HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty());
 
-    LockedTransportCapacity.ContractId lockedCap1 =
-        new LockedTransportCapacity.ContractId("cid-01");
-    LockedTransportCapacity.ContractId lockedCap2 =
-        new LockedTransportCapacity.ContractId("cid-02");
+    TransportCommitment.ContractId lockedCap1 = new TransportCommitment.ContractId("cid-01");
+    TransportCommitment.ContractId lockedCap2 = new TransportCommitment.ContractId("cid-02");
     PaymentRequest.ContractId buyerPayReq1 = new PaymentRequest.ContractId("cid-03");
     PaymentRequest.ContractId buyerPayReq2 = new PaymentRequest.ContractId("cid-04");
     PaymentRequest.ContractId warehousePayReq1 = new PaymentRequest.ContractId("cid-05");

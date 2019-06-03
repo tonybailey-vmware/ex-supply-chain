@@ -35,12 +35,12 @@ template TransportQuote
     workflowId: WorkflowId
     transportCompany: Party
     supplier: Party
-    item: (WarehouseAllocation, TransportQuoteItem)
+    item: (WarehouseProduct, TransportQuoteItem)
   where
     signatory supplier, transportCompany
 
     controller supplier can
-      TransportQuote_Lock: ContractId LockedTransportCapacity
+      TransportQuote_Lock: ContractId TransportCommitment
         with
           quantity: Int
         do
@@ -48,29 +48,29 @@ template TransportQuote
                 price = (snd item).price * (intToDecimal quantity) / intToDecimal (snd item).transportableQuantity
                 payer = supplier
                 payee = transportCompany
-          let newAllocation = (fst item) with quantity = quantity
-          create LockedTransportCapacity with
+          let warehouseProduct = (fst item) with quantity = quantity
+          create TransportCommitment with
                 workflowId = workflowId
                 transportCompany = transportCompany
                 supplier = supplier
-                item = newAllocation
+                warehouseProduct = warehouseProduct
                 deliveryDate = (snd item).deliveryDate
                 transportPaymentRequestCid = transportPaymentRequestCid
 
-template Quote
+template QuoteForBuyer
   with
     workflowId: WorkflowId
     seller: Party
     buyer: Party
     buyerAddress: Text
     deliveryPlanCid: ContractId DeliveryAndPaymentPlan
-    items: [PricedWarehouseAllocation]
+    items: [PricedWarehouseProduct]
     totalPrice: Decimal
   where
     signatory seller
     observer buyer
 
     controller buyer can
-      Quote_Accept: ContractId Order
+      Quote_Accept: ContractId ConfirmedOrder
         do
-          create Order with ..
+          create ConfirmedOrder with ..

@@ -71,9 +71,9 @@ const transportQuoteRequestView = createTab("Transport Quote Request", ":Transpo
     createCol("transportCompany"),
     createCol("buyer"),
     createCol("buyerAddress"),
-    createCol("productName", "Product Name", 80, r => r.item.allocation.productName),
-    createCol("quantity", "Quantity", 80, r => r.item.allocation.quantity),
-    createCol("warehouse", "Warehouse", 80, r => r.item.allocation.warehouse),
+    createCol("productName", "Product Name", 80, r => r.item.warehouseProduct.productName),
+    createCol("quantity", "Quantity", 80, r => r.item.warehouseProduct.quantity),
+    createCol("warehouse", "Warehouse", 80, r => r.item.warehouseProduct.warehouse),
     createCol("deliveryFrom", "Delivery From", 40, r => r.item.deliveryFrom),
     createCol("deliveryTo", "Delvery To", 40, r => r.item.deliveryTo)
 ])
@@ -95,12 +95,12 @@ const lockedInventoryItemView = createTab("Locked Inventory", ":LockedInventoryI
     createCol("unitPrice")
 ])
 
-const lockedTransportCapacityView = createTab("Locked Transport Capacity", ":LockedTransportCapacity@", [
+const transportCommitmentView = createTab("Locked Transport Capacity", ":TransportCommitment@", [
     createCol("workflowId"),
     createCol("supplier"),
-    createCol("productName", "Product Name", 80, r => r.item.productName),
-    createCol("quantity", "Quantity", 80, r => r.item.quantity),
-    createCol("warehouse", "Warehouse", 80, r => r.item.warehouse),
+    createCol("productName", "Product Name", 80, r => r.warehouseProduct.productName),
+    createCol("quantity", "Quantity", 80, r => r.warehouseProduct.quantity),
+    createCol("warehouse", "Warehouse", 80, r => r.warehouseProduct.warehouse),
     createCol("deliveryDate"),
 ])
 
@@ -120,7 +120,7 @@ const aggregatedQuoteView = createTab("Aggregated Quote", ":AggregatedQuote@", [
     createCol("items", "Items", 80, r => r.items.length + " items"),
 ])
 
-const quoteView = createTab("Quote", ":Quote@", [
+const quoteForBuyerView = createTab("QuoteForBuyer", ":QuoteForBuyer@", [
     createCol("workflowId"),
     createCol("buyer"),
     createCol("buyerAddress"),
@@ -129,7 +129,7 @@ const quoteView = createTab("Quote", ":Quote@", [
     createCol("items", "Items", 80, r => r.items.length + " items"),
 ])
 
-const orderView = createTab("Order", ":Order@", [
+const confirmedOrderView = createTab("ConfirmedOrder", ":ConfirmedOrder@", [
     createCol("workflowId"),
     createCol("buyer"),
     createCol("seller"),
@@ -193,8 +193,8 @@ export const customViews = (userId, party, role) => {
         return {
             sellerRelationshipView,
             quoteRequestView,
-            quoteView,
-            orderView,
+            quoteForBuyerView,
+            confirmedOrderView,
             deliveryView,
             paymentObligationView,
         };
@@ -203,8 +203,8 @@ export const customViews = (userId, party, role) => {
             quoteRequestView,
             quoteRequestAccepted,
             aggregatedQuoteView,
-            quoteView,
-            orderView,
+            quoteForBuyerView,
+            confirmedOrderView,
             paymentObligationView,
         }
     } else if (party == 'Supplier') {
@@ -230,7 +230,7 @@ export const customViews = (userId, party, role) => {
     } else if (party == "TransportCompany1" || party == "TransportCompany2") {
         return {
             transportQuoteRequestView,
-            lockedTransportCapacityView,
+            transportCommitmentView,
             deliveryInstructionView,
             paymentObligationView,
         }
