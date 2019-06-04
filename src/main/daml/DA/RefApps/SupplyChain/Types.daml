@@ -16,6 +16,7 @@ data OrderedProduct =
 data WarehouseProduct = WarehouseProduct with
     productName: Text
     warehouse: Party
+    warehouseAddress: Text
     quantity: Int
   deriving (Eq, Show)
 

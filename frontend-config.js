@@ -83,6 +83,7 @@ const transportQuoteRequestView = createTab("Transport Quote Request", ":Transpo
     createCol("productName", "Product Name", 80, r => r.item.warehouseProduct.productName),
     createCol("quantity", "Quantity", 80, r => r.item.warehouseProduct.quantity),
     createCol("warehouse", "Warehouse", 80, r => r.item.warehouseProduct.warehouse),
+    createCol("warehouseAddress", "Warehouse Address", 80, r => r.item.warehouseProduct.warehouseAddress),
     createCol("deliveryFrom", "Delivery From", 40, r => r.item.deliveryFrom),
     createCol("deliveryTo", "Delvery To", 40, r => r.item.deliveryTo)
 ])

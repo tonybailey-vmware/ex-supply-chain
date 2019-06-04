@@ -16,6 +16,19 @@ import DA.RefApps.SupplyChain.Aggregate
 import DA.RefApps.SupplyChain.Lock
 import DA.RefApps.SupplyChain.Inventory
 
+import DA.Next.Map qualified as M
+
+warehouseAddresses : M.Map Text Text
+warehouseAddresses =
+    M.fromList [("Warehouse1", "1345, Liberty City, Fleet street 1"),
+                ("Warehouse2", "2456, San Andreas, Main street 9")]
+
+warehouseToAddress : Party -> Text
+warehouseToAddress p =
+    fromSomeNote ("Unknown address for party: " <> pStr) $ M.lookup pStr warehouseAddresses
+  where
+    pStr = partyToText p
+
 template QuoteRequest
   with
     buyer: Party
@@ -85,8 +98,9 @@ template SupplyRequest
                 (\product -> do
                   req <- create InventoryQuoteRequestBotTrigger with
                     warehouse = w, ..
-                  let wa = WarehouseProductWithDates (WarehouseProduct product.productName w product.quantity) product.deliveryFrom product.deliveryTo
-                  return (req, wa)))
+                  let wa = warehouseToAddress w
+                      wpwd = WarehouseProductWithDates (WarehouseProduct product.productName w wa product.quantity) product.deliveryFrom product.deliveryTo
+                  return (req, wpwd)))
           quoteRequests <- fmap concat $ forA transportCompanies
               (\tc -> forA warehouseProducts
                 (\warehouseProduct ->
@@ -169,19 +183,26 @@ template CalculateAggregatedQuoteBotTrigger
           inventoryQuoteCids: [ContractId InventoryQuote]
           inventoryItemCids: [ContractId InventoryItem]
         do
-          (proportionalQuotes, unusedQuotes) <- calculateBestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids
+          (proportionalQuotes, unusedQuotes) <-
+              calculateBestPriceDelivery transportQuoteCids inventoryQuoteCids products inventoryItemCids
           inventoryItems <- forA inventoryItemCids fetch
           let inventoryItemsWithCid = zip inventoryItems inventoryItemCids
           locks <- foldlA (\ summedLocks pq -> do
               transportQuote <- fetch pq.transportQuoteCid
-              let inventoryItemWithCid = head $ filter (\itemWithCid -> (fst itemWithCid).productName == (fst transportQuote.item).productName && (fst transportQuote.item).warehouse == (fst itemWithCid).warehouse) summedLocks.liveInventoryItems
+              let inventoryItemWithCid =
+                    head $ filter
+                            (\itemWithCid ->
+                                (fst itemWithCid).productName == (fst transportQuote.item).productName &&
+                                (fst transportQuote.item).warehouse == (fst itemWithCid).warehouse) summedLocks.liveInventoryItems
               transportCommitment <- exercise pq.transportQuoteCid TransportQuote_Lock with quantity = pq.quantity
               let inventoryItemCid = snd inventoryItemWithCid
               (newInventoryCid, lockedInventoryCid) <- exercise inventoryItemCid $ InventoryItem_SplitAndLock with
                 quantityToLock = pq.quantity
                 workflowId = workflowId
               newInventory <- fetch newInventoryCid
-              let prevLiveInventoriesWithoutArchived = filter (\inventoryItemWithCid -> (snd inventoryItemWithCid) /= inventoryItemCid) summedLocks.liveInventoryItems
+              let prevLiveInventoriesWithoutArchived =
+                    filter (\inventoryItemWithCid ->
+                              (snd inventoryItemWithCid) /= inventoryItemCid) summedLocks.liveInventoryItems
                   updatedInventories = (newInventory, newInventoryCid) :: prevLiveInventoriesWithoutArchived
               return SummedLocks with
                 liveInventoryItems = updatedInventories
@@ -240,14 +261,21 @@ calculateBestPriceDelivery transportQuoteCids inventoryQuoteCids products invent
     inventoryItems <- forA inventoryItemCids fetch
     let (bestQuotes, unusedQuotes) = unzip $ map (\product  ->
           let productName = product.productName
-              transportQuotesForProduct = filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
+              transportQuotesForProduct =
+                  filter (\quoteWithCid -> (fst (fst quoteWithCid).item).productName == productName) transportQuotesWithCid
               combinedQuotes = map (\transportQuoteWithCid ->
                   let transportQuoteCid = snd transportQuoteWithCid
                       transportQuote = fst transportQuoteWithCid
                       transportQuantity = (snd transportQuote.item).transportableQuantity
                       transportUnitPrice = (snd transportQuote.item).price / (intToDecimal transportQuantity)
-                      matchingInventoryQuote = listToOptional $ filter (\quoteWithCid -> (fst quoteWithCid).productName == productName && (fst quoteWithCid).warehouse == (fst transportQuote.item).warehouse) inventoryQuotesWithCid
-                      matchingInventoryItem = head $ filter (\inventoryItem -> inventoryItem.productName == productName && inventoryItem.warehouse == (fst transportQuote.item).warehouse) inventoryItems
+                      matchingInventoryQuote =
+                          listToOptional $ filter (\quoteWithCid ->
+                                  (fst quoteWithCid).productName == productName &&
+                                  (fst quoteWithCid).warehouse == (fst transportQuote.item).warehouse) inventoryQuotesWithCid
+                      matchingInventoryItem =
+                          head $ filter (\inventoryItem ->
+                                  inventoryItem.productName == productName &&
+                                  inventoryItem.warehouse == (fst transportQuote.item).warehouse) inventoryItems
 
                       combinedQuote = fmap (\ inventoryQuoteWithCid ->
                           let inventoryQuoteCid = snd inventoryQuoteWithCid
@@ -297,7 +325,7 @@ bestQuotesForQuantity quantity combinedQuotes =
               toBeAdded = min (min missing actQuote.maxDeliveredQuantity) maxRemainingInventoryForWarehouse
               price = actQuote.combinedUnitPrice * intToDecimal toBeAdded
               warehouseProduct = WarehouseProduct with
-                productName = actQuote.productName; warehouse = actQuote.warehouse; quantity = toBeAdded
+                productName = actQuote.productName; warehouse = actQuote.warehouse; warehouseAddress = warehouseToAddress actQuote.warehouse; quantity = toBeAdded
               transportWithInventory = TransportableWarehouseProduct with
                 warehouseProduct = warehouseProduct; transportCompany = actQuote.transportCompany; deliveryDate = actQuote.deliveryDate; pickUpDate = actQuote.pickUpDate
               pricedTransportWithInventory = (transportWithInventory, price)
