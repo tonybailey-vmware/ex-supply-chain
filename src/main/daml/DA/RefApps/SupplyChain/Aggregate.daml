@@ -35,7 +35,8 @@ template AggregatedQuotePending
               payee = supplier
               price = price
             return $ DeliveryPlanItem alloc ltc lii supplierPayment)
-          let quoteItems = map (\((alloc, price), tcr, lii) -> PricedWarehouseProduct alloc.warehouseProduct price) items
+          let quoteItems = map (\((transportable, price), tcr, lii) ->
+                PricedWarehouseProduct transportable.warehouseProduct price transportable.transportCompany transportable.deliveryDate) items
           deliveryPlanCid <- create DeliveryPlan with
             items = deliveryItems, ..
           create AggregatedQuoteTrigger with

@@ -36,6 +36,8 @@ data TransportableWarehouseProduct = TransportableWarehouseProduct with
 data PricedWarehouseProduct = PricedWarehouseProduct with
     warehouseProduct: WarehouseProduct
     price: Decimal
+    transportCompany: Party
+    deliveryDate: Date
   deriving (Eq, Show)
 
 type TransportableWarehouseProductWithPrice = (TransportableWarehouseProduct, Decimal)

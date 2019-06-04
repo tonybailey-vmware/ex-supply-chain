@@ -151,10 +151,12 @@ const quoteForBuyerView = createTab("Received Quote", ":QuoteForBuyer@", [
     createCol("items", "Items", 80, r => r.items.length + " items"),
 ])
 
-const confirmedOrderView = createTab("ConfirmedOrder", ":ConfirmedOrder@", [
+const confirmedOrderView = createTab("Confirmed Order", ":ConfirmedOrder@", [
     createCol("workflowId"),
     createCol("buyer"),
     createCol("seller"),
+    createCol("totalPrice"),
+    createCol("items", "Items", 80, r => r.items.length + " items"),
 ])
 
 const deliveryInstructionView = createTab("Delivery Instruction", ":DeliveryInstruction@", [
