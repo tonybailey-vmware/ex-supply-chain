@@ -24,6 +24,8 @@ public class SupplyChain {
   private static final String SUPPLIER_PARTY = "Supplier";
   //  private static final String TRANSPORT_PARTY1 = "TransportCompany1";
   //  private static final String TRANSPORT_PARTY2 = "TransportCompany2";
+  private static final String WAREHOUSE1 = "Warehouse1";
+  private static final String WAREHOUSE2 = "Warehouse2";
 
   private static final AtomicReference<Clock> clock =
       new AtomicReference<>(Clock.fixed(Instant.ofEpochSecond(0), ZoneId.systemDefault()));
@@ -78,6 +80,24 @@ public class SupplyChain {
         transportCapacityReleaseBot.transactionFilter,
         transportCapacityReleaseBot::calculateCommands,
         transportCapacityReleaseBot::getContractInfo);
+
+    InventoryQuoteRequestBot inventoryQuoteRequestBot1 =
+        new InventoryQuoteRequestBot(commandBuilderFactory, WAREHOUSE1);
+    Bot.wire(
+        APPLICATION_ID,
+        client,
+        inventoryQuoteRequestBot1.transactionFilter,
+        inventoryQuoteRequestBot1::calculateCommands,
+        inventoryQuoteRequestBot1::getContractInfo);
+
+    InventoryQuoteRequestBot inventoryQuoteRequestBot2 =
+        new InventoryQuoteRequestBot(commandBuilderFactory, WAREHOUSE2);
+    Bot.wire(
+        APPLICATION_ID,
+        client,
+        inventoryQuoteRequestBot2.transactionFilter,
+        inventoryQuoteRequestBot2::calculateCommands,
+        inventoryQuoteRequestBot2::getContractInfo);
 
     logger.info("Welcome to Direct Asset Control Demo Application!");
     logger.info("Press Ctrl+C (for Mac and Linux, Ctrl+Z on Windows) to shut down the program.");

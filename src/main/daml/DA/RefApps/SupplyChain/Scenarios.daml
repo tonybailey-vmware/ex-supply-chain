@@ -134,12 +134,12 @@ fullScenario = scenario do
   transportQuoteT2W2 <- submit transportComp2 do
     exercise transportQuoteRequestT2W2 $ TransportQuoteRequest_Accept transportQuoteItemT2_2
 
-  -- warehouses accept reservation requests
+  -- warehouse BOTs accept reservation requests
   invReservationCid1 <- submit warehouse1 do
-    exercise invReservationReq1 $ InventoryQuoteRequest_Accept setupData.inventoryW1P1Cid
+    exercise invReservationReq1 $ InventoryQuoteRequestBotTrigger_Accept setupData.inventoryW1P1Cid
 
   invReservationCid2 <- submit warehouse2 do
-    exercise invReservationReq2 $ InventoryQuoteRequest_Accept setupData.inventoryW2P1Cid
+    exercise invReservationReq2 $ InventoryQuoteRequestBotTrigger_Accept setupData.inventoryW2P1Cid
 
   -- After a manual signal (that means end of transport quote request period), supplier's BOT collects
   -- all the available (tranport and inventory) quotes sent in by transport companies with the inventory items

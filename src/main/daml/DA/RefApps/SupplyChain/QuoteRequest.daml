@@ -74,7 +74,7 @@ template SupplyRequest
   where
     signatory supplier
     controller supplier can
-      SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryQuoteRequest], [ContractId TransportQuoteRequest])
+      SupplyRequest_StartPriceCollection: (ContractId TransportQuoteRequestPending, [ContractId InventoryQuoteRequestBotTrigger], [ContractId TransportQuoteRequest])
         with
           warehouses: [Party]
           transportCompanies: [Party]
@@ -82,7 +82,7 @@ template SupplyRequest
           (invRequests, warehouseProducts) <- fmap (unzip . concat) $ forA warehouses
               (\w -> forA products
                 (\product -> do
-                  req <- create InventoryQuoteRequest with
+                  req <- create InventoryQuoteRequestBotTrigger with
                     warehouse = w, ..
                   let wa = WarehouseProductWithDates (WarehouseProduct product.productName w product.quantity) product.deliveryFrom product.deliveryTo
                   return (req, wa)))
@@ -96,7 +96,7 @@ template SupplyRequest
           pending <- create TransportQuoteRequestPending with ..
           return (pending, invRequests, quoteRequests)
 
-template InventoryQuoteRequest
+template InventoryQuoteRequestBotTrigger
   with
     workflowId: WorkflowId
     warehouse: Party
@@ -106,7 +106,7 @@ template InventoryQuoteRequest
     signatory supplier
 
     controller warehouse can
-      InventoryQuoteRequest_Accept: ContractId InventoryQuote
+      InventoryQuoteRequestBotTrigger_Accept: ContractId InventoryQuote
         with
           inventoryItemCid: ContractId InventoryItem
         do
