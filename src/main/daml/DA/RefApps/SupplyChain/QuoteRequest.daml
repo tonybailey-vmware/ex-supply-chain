@@ -26,10 +26,11 @@ template QuoteRequest
     signatory buyer
     controller seller can
       QuoteRequest_Accept: ContractId QuoteRequestAccepted
+        with
+          workflowId: Text
         do
           now <- getTime
-          create QuoteRequestAccepted with
-            workflowId = show now, ..
+          create QuoteRequestAccepted with ..
 
 template QuoteRequestAccepted
   with

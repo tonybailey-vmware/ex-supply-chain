@@ -107,7 +107,7 @@ fullScenario = scenario do
 
   -- Propagation of quote request towards supplier
   acceptedQr <- submit seller do
-    accepted <- exercise quoteReq1 QuoteRequest_Accept
+    accepted <- exercise quoteReq1 $ QuoteRequest_Accept "3024"
     exercise accepted QuoteRequestAccepted_SendToSupplier with
                         supplier = supplier
 
