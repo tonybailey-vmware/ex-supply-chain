@@ -187,15 +187,23 @@ fullScenario = scenario do
   pickUpReq3 <- submit transportComp1 do
     exercise deliveryInstruction3 DeliveryInstruction_PickUp
 
-  -- TODO: Check whether it is good to send the delivery acknowledgement request to the buyer from the warehouse (instead of the transport company)
-  -- Warehouse acknowledges the pickup then asks for buyer's delivery acknowledgement
-  (delivery1, delivery2) <- submit warehouse1 do
+  -- Warehouse acknowledges the pickup and lets the transport companies to transport the products
+  (transportPending1, transportPending2) <- submit warehouse1 do
     d1 <- exercise pickUpReq1 PickUpRequest_Accept
     d2 <- exercise pickUpReq2 PickUpRequest_Accept
     return (d1, d2)
 
-  delivery3 <- submit warehouse2 do
+  transportPending3 <- submit warehouse2 do
     exercise pickUpReq3 PickUpRequest_Accept
+
+  -- Transportation happens
+  (delivery1, delivery3) <- submit transportComp1 do
+    d1 <- exercise transportPending1 TransportPending_Deliver
+    d3 <- exercise transportPending3 TransportPending_Deliver
+    return (d1, d3)
+
+  delivery2 <- submit transportComp2 do
+    exercise transportPending2 TransportPending_Deliver
 
   passToDate $ date 2019 Dec 7
 

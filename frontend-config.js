@@ -179,6 +179,17 @@ const pickUpRequestView = createTab("Pickup Request", ":PickUpRequest@", [
     createCol("deliveryDate")
 ])
 
+const transportPendingView = createTab("Pending Transport", ":TransportPending@", [
+    createCol("workflowId"),
+    createCol("buyer"),
+    createCol("buyerAddress"),
+    createCol("seller"),
+    createCol("productName"),
+    createCol("warehouse"),
+    createCol("quantity"),
+    createCol("deliveryDate")
+])
+
 const deliveryView = createTab("Delivery", ":Delivery@", [
     createCol("workflowId"),
     createCol("buyer"),
@@ -255,6 +266,7 @@ export const customViews = (userId, party, role) => {
             transportQuoteRequestView,
             transportCommitmentView,
             deliveryInstructionView,
+            transportPendingView,
             paymentObligationView,
         }
     } else {

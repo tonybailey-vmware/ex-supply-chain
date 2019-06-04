@@ -199,8 +199,11 @@ paymentTest = scenario do
       lockedInventoryItemCid = lockedInv
       deliveryDate = setupData.product01.deliveryFrom
 
-  delivery <- submit warehouse1 do
+  transportPending <- submit warehouse1 do
     exercise pickupRequest PickUpRequest_Accept
+
+  delivery <- submit transportComp1 do
+    exercise transportPending TransportPending_Deliver
 
   complete <- submit buyer do
     exercise delivery Delivery_Acknowledge

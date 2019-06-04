@@ -212,10 +212,33 @@ template PickUpRequest
     observer warehouse
 
     controller warehouse can
-      PickUpRequest_Accept: ContractId Delivery
+      PickUpRequest_Accept: ContractId TransportPending
         do
           lockedInventoryItem <- fetch lockedInventoryItemCid
           -- consume the locked inventory indicating that the products are no longer returning
           archive lockedInventoryItemCid
-          create Delivery with
+          create TransportPending with
             warehousePaymentRequestCid = lockedInventoryItem.warehousePaymentRequestCid, ..
+
+template TransportPending
+  with
+    workflowId: WorkflowId
+    warehouse: Party
+    transportCompany: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    productName: Text
+    quantity: Int
+    transportCommitmentCid: ContractId TransportCommitment
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
+    deliveryDate: Date
+  where
+    signatory warehouse
+
+    controller transportCompany can
+      TransportPending_Deliver: ContractId Delivery
+        do
+          create Delivery with ..
