@@ -1,32 +1,46 @@
 package com.digitalasset.refapps.supplychain;
 
+import com.daml.ledger.javaapi.data.DamlList;
+import com.daml.ledger.javaapi.data.Party;
+import com.daml.ledger.javaapi.data.Record;
+import com.daml.ledger.javaapi.data.Text;
 import com.daml.ledger.rxjava.DamlLedgerClient;
-import com.digitalasset.ledger.api.v1.transaction.TreeEvent;
-import com.digitalasset.refapps.supplychain.util.CliOptions;
-import com.digitalasset.testing.comparator.MessageTester;
+import com.digitalasset.testing.comparator.ledger.CustomChoiceExecuted;
+import com.digitalasset.testing.comparator.ledger.CustomContractCreated;
 import com.digitalasset.testing.ledger.DefaultLedgerAdapter;
-import com.digitalasset.testing.ledger.LedgerAdapter;
+import com.digitalasset.testing.ledger.SandboxRunner;
+import com.digitalasset.testing.ledger.clock.SandboxTimeProviderFactory$;
+import da.refapps.supplychain.quoterequest.QuoteRequest;
+import da.refapps.supplychain.relationship.BuyerSellerRelationship;
+import da.refapps.supplychain.types.OrderedProduct;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import com.digitalasset.testing.store.*;
+import scala.concurrent.duration.FiniteDuration;
+import scala.util.Right;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static junit.framework.TestCase.assertEquals;
+
 public class SupplychainIT {
+    private static final BuyerSellerRelationship.ContractId CID_OF_BUYER_SELLER_RELATIONSHIP =
+            new BuyerSellerRelationship.ContractId("#1:1");
+
     private Process sandbox = null;
     private ExecutorService bots = null;
     private DamlLedgerClient client = null;
     private AtomicReference<Instant> time = new AtomicReference<>();
-    private static final String RELATIVE_DAR_PATH = "./target/direct-asset-control.dar";
+    private static final String RELATIVE_DAR_PATH = "./target/supplychain.dar";
     private static final Integer sandboxPort = 6865;
     private static final int WAIT_TIMEOUT = 20;
     private static final Instant START_TIME =
@@ -34,105 +48,89 @@ public class SupplychainIT {
     private static final String TEST_MODULE = "DA.RefApps.SupplyChain.Scenarios";
     private static final String TEST_SCENARIO = "setup";
 
-    private static ProcessBuilder getSandboxRunner(String scenario) {
-        return new ProcessBuilder(
-                "da",
-                "run",
-                "sandbox",
-                "--",
-                "-p",
-                sandboxPort.toString(),
-                "--scenario",
-                String.format("%s:%s", TEST_MODULE, scenario),
-                RELATIVE_DAR_PATH)
-                .redirectError(new File("integration-test-sandbox.log"))
-                .redirectOutput(new File("integration-test-sandbox.log"));
-    }
+    private DefaultLedgerAdapter lA;
+    private SandboxRunner sbRunner;
 
-    public static void waitForSandbox(CliOptions options, DamlLedgerClient client) {
-        waitForSandbox(options.getSandboxHost(), options.getSandboxPort(), client);
-    }
-
-    public static void waitForSandbox(String host, int port, DamlLedgerClient client) {
-        boolean connected = false;
-        while (!connected) {
-            try {
-                client.connect();
-                connected = true;
-            } catch (Exception _ignored) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ignored) {
-                }
-            }
-        }
-    }
+    private Party BUYER_PARTY = new Party("Buyer");
+    private Party SELLER_PARTY = new Party("Seller");
+    private Text BUYER_ADDRESS = new Text("1234, Vice City, Arkham street 13");
 
     @Before
-    public void startSandboxWithBots() throws IOException {
-        time.set(START_TIME);
-        sandbox = getSandboxRunner(TEST_SCENARIO).start();
-
-        bots = Executors.newSingleThreadExecutor();
-        bots.execute(
-                () -> {
-                    try {
-                        SupplyChain.main(new String[] {"-p", sandboxPort.toString()});
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-
-        client =
-                DamlLedgerClient.forHostWithLedgerIdDiscovery("localhost", sandboxPort, Optional.empty());
-        waitForSandbox("localhost", sandboxPort, client);
+    public void before() throws IOException, InterruptedException {
+        lA = new DefaultLedgerAdapter(new DefaultValueStore(), SandboxTimeProviderFactory$.MODULE$,
+                    "localhost", sandboxPort, FiniteDuration.apply(5, TimeUnit.SECONDS));
+        sbRunner = new SandboxRunner(RELATIVE_DAR_PATH, TEST_MODULE, TEST_SCENARIO, sandboxPort, START_TIME, WAIT_TIMEOUT);
+        sbRunner.startSandboxWithBots();
+        lA.start(new String[] {"Buyer"});
     }
 
     @After
-    public void stopSandboxAndBots() {
-        if (client != null) {
-            try {
-                client.close();
-
-            } catch (Exception e) {
-                System.out.println("exception during shutdown: " + e.getMessage());
-            }
-        }
-        client = null;
-
-        if (bots != null) {
-            bots.shutdownNow();
-        }
-        bots = null;
-        if (sandbox != null) {
-            sandbox.destroy();
-        }
-        sandbox = null;
+    public void after() {
+        lA.stop();
+        sbRunner.stopSandboxAndBots();
     }
 
     @Test
-    public void testGlobalSell() {
-        LedgerAdapter lA = new DefaultLedgerAdapter(new DefaultValueStore());
-        lA.start(new String[] {"Supplier"});
+    public void testBuyerSellerRelationshipIsPresent() throws IOException {
+        List<Record.Field> fields1 =
+                Arrays.asList(
+                        new Record.Field(BUYER_PARTY),
+                        new Record.Field(BUYER_ADDRESS),
+                        new Record.Field(SELLER_PARTY));
+        Record expected1 = new Record(fields1);
+        lA.observeEvent("Buyer",
+                CustomContractCreated.apply(BuyerSellerRelationship.TEMPLATE_ID,
+                        "{CAPTURE:observedBuyerSellerCid}",
+                                        Right.<String, Record>apply(expected1)));
 
-        lA.observeEvent("Supplier", new MessageTester<TreeEvent>() {
-            @Override
-            public ComparisonResult test(TreeEvent treeEvent) {
-                return treeEvent.getCreated().;
-            }
+        BuyerSellerRelationship.ContractId cidOfBuyerSellerRelationship =
+                new BuyerSellerRelationship.ContractId(lA.valueStore().get("observedBuyerSellerCid"));
+        assertEquals(cidOfBuyerSellerRelationship, CID_OF_BUYER_SELLER_RELATIONSHIP);
 
-            @Override
-            public String prettyPrintExpected() {
-                return null;
-            }
+        // Send a quote request
+        OrderedProduct orderedProduct =
+                new OrderedProduct("Product1", 10L,
+                                    LocalDate.of(2019,6,6),
+                                    LocalDate.of(2019,6,7));
+        lA.exerciseChoiceJava(BUYER_PARTY.getValue(),
+                              BuyerSellerRelationship.TEMPLATE_ID,
+                              cidOfBuyerSellerRelationship.contractId,
+                            "BuyerSellerRelationship_SendQuoteRequest",
+                              new Record(new Record.Field(new DamlList(orderedProduct.toValue()))));
 
-            @Override
-            public String prettyPrintActual(TreeEvent treeEvent) {
-                return null;
-            }
-        });
-        ((DefaultLedgerAdapter) lA).valueStore().get()
-        lA.stop();
+        lA.observeEvent(BUYER_PARTY.getValue(), CustomChoiceExecuted.apply(BuyerSellerRelationship.TEMPLATE_ID,
+                "{CAPTURE:xyz}",
+                "BuyerSellerRelationship_SendQuoteRequest",
+                                    new Record(new Record.Field(new DamlList(orderedProduct.toValue())))));
+
+        List<Record.Field> fields2 =
+                Arrays.asList(
+                        new Record.Field("buyer", BUYER_PARTY),
+                        new Record.Field("buyerAddress", BUYER_ADDRESS),
+                        new Record.Field("seller", SELLER_PARTY),
+                        new Record.Field("products", new DamlList(orderedProduct.toValue())));
+        Record expected2 = new Record(fields2);
+        lA.observeEvent(BUYER_PARTY.getValue(), CustomContractCreated.apply(QuoteRequest.TEMPLATE_ID,
+                "{CAPTURE:observedQuoteRequest}", Right.<String, Record>apply(expected2)));
+    }
+
+    @Test(expected = TimeoutException.class)
+    public void testAddressIsNotWrong() throws IOException {
+        List<Record.Field> fields =
+                Arrays.asList(
+                        new Record.Field(new Party("Buyer")),
+                        new Record.Field(new Text("1234, Grammar Error City, Arkham street 13")),
+                        new Record.Field(new Party("Someone1")));
+        Record expected = new Record(fields);
+        lA.observeEvent(
+                "Buyer",
+                CustomContractCreated.
+                        apply(BuyerSellerRelationship.TEMPLATE_ID,
+                                "{CAPTURE:cid01}",
+                                Right.<String, Record>apply(expected)));
+
+        BuyerSellerRelationship.ContractId cidOfBuyerSellerRelationship =
+                new BuyerSellerRelationship.ContractId(lA.valueStore().get("someCid"));
     }
 
 }
