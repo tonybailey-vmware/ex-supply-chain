@@ -1,0 +1,89 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Quote where
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Order
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Payment
+
+-- Represents a "Quote" from warehouse to offer its inventory
+template InventoryQuote
+  with
+    workflowId: WorkflowId
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    price: Decimal
+  where
+    signatory warehouse
+    observer supplier
+
+    controller supplier can
+      InventoryQuote_Archive: ()
+        do return ()
+
+data TransportQuoteItem = TransportQuoteItem with
+    transportableQuantity: Int
+    price: Decimal -- total price corresponding to transportableQuantity
+    pickUpDate: Date
+    deliveryDate: Date
+  deriving (Eq, Show)
+
+-- Represents a quote from the transport company about how it can provide transport services regarding the
+-- given WarehouseProduct
+template TransportQuote
+  with
+    workflowId: WorkflowId
+    transportCompany: Party
+    supplier: Party
+    item: (WarehouseProduct, TransportQuoteItem)
+  where
+    signatory supplier, transportCompany
+
+    controller supplier can
+      TransportQuote_Lock: ContractId TransportCommitment
+        with
+          quantity: Int
+        do
+          transportPaymentRequestCid <- create PaymentRequest with
+                price = (snd item).price * (intToDecimal quantity) / intToDecimal (snd item).transportableQuantity
+                payer = supplier
+                payee = transportCompany
+          let warehouseProduct = (fst item) with quantity = quantity
+          create TransportCommitment with
+                workflowId = workflowId
+                transportCompany = transportCompany
+                supplier = supplier
+                warehouseProduct = warehouseProduct
+                deliveryDate = (snd item).deliveryDate
+                transportPaymentRequestCid = transportPaymentRequestCid
+
+    controller supplier can
+      TransportQuote_Archive: ()
+        do return ()
+
+-- A complete quote for the buyer indicating the delivery plan and payment info
+template QuoteForBuyer
+  with
+    workflowId: WorkflowId
+    seller: Party
+    buyer: Party
+    buyerAddress: Text
+    deliveryPlanCid: ContractId DeliveryAndPaymentPlan
+    items: [PricedWarehouseProduct]
+    totalPrice: Decimal
+  where
+    signatory seller
+    observer buyer
+
+    controller buyer can
+      QuoteForBuyer_Accept: ContractId ConfirmedOrder
+        do
+          create ConfirmedOrder with ..

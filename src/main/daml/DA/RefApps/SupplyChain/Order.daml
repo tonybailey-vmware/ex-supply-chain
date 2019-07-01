@@ -1,0 +1,27 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Order where
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Delivery
+
+-- Represents the obligation of seller to delivery the products in deliveryPlan
+template ConfirmedOrder
+  with
+    workflowId: WorkflowId
+    seller: Party
+    buyer: Party
+    deliveryPlanCid: ContractId DeliveryAndPaymentPlan
+    items: [PricedWarehouseProduct]
+    totalPrice: Decimal
+  where
+    signatory seller, buyer
+
+    controller seller can
+      ConfirmedOrder_StartDelivery: [ContractId DeliveryInstruction]
+        do
+          exercise deliveryPlanCid DeliveryPlan_Start

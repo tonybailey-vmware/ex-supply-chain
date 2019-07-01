@@ -1,0 +1,43 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Lock where
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Payment
+
+-- Represent a locked (reserved) amount of a particular product at a warehouse
+template LockedInventoryItem
+  with
+    workflowId: WorkflowId
+    warehouse: Party
+    supplier: Party
+    productName: Text
+    quantity: Int
+    unitPrice: Decimal
+    warehousePaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory warehouse
+    observer supplier
+
+-- The commitment of the transport company that it will be available for delivery at the preagreed dates with
+-- the required capacity
+template TransportCommitment
+  with
+    workflowId: WorkflowId
+    transportCompany: Party
+    supplier: Party
+    warehouseProduct: WarehouseProduct
+    deliveryDate: Date
+    transportPaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory transportCompany
+    observer supplier
+
+    controller supplier can
+      TransportCommitment_ReleaseAndPay: ContractId PaymentObligation
+        do
+          exercise transportPaymentRequestCid PaymentRequest_Pay

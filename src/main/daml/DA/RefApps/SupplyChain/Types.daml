@@ -1,0 +1,47 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Types where
+
+data OrderedProduct =
+  OrderedProduct {
+    productName: Text;
+    quantity: Int;
+    deliveryFrom: Date;
+    deliveryTo: Date
+  } deriving (Eq, Show)
+
+data WarehouseProduct = WarehouseProduct with
+    productName: Text
+    warehouse: Party
+    warehouseAddress: Text
+    quantity: Int
+  deriving (Eq, Show)
+
+data WarehouseProductWithDates = WarehouseProductWithDates with
+    warehouseProduct: WarehouseProduct
+    deliveryFrom: Date
+    deliveryTo: Date
+  deriving (Eq, Show)
+
+data TransportableWarehouseProduct = TransportableWarehouseProduct with
+    warehouseProduct: WarehouseProduct
+    transportCompany: Party
+    pickUpDate: Date
+    deliveryDate: Date
+  deriving (Eq, Show)
+
+data PricedWarehouseProduct = PricedWarehouseProduct with
+    warehouseProduct: WarehouseProduct
+    price: Decimal
+    transportCompany: Party
+    deliveryDate: Date
+  deriving (Eq, Show)
+
+type TransportableWarehouseProductWithPrice = (TransportableWarehouseProduct, Decimal)
+type ProductWithQuantity = (Text, Int)
+
+type WorkflowId = Text

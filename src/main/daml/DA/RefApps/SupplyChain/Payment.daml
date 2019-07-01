@@ -1,0 +1,32 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Payment where
+
+-- Request for a payment from the payee.
+template PaymentRequest
+  with
+    payer: Party
+    payee: Party
+    price: Decimal
+  where
+    signatory payee
+    observer payer
+
+    controller payer can
+      PaymentRequest_Pay: ContractId PaymentObligation
+        do
+          create PaymentObligation with ..
+
+-- Represents the payers obligation to pay the specified price to the payee (off-ledger)
+template PaymentObligation
+  with
+    payer: Party
+    payee: Party
+    price: Decimal
+  where
+    signatory payer, payee
+    agreement show payer <> " agrees to pay " <> show price <> " currency units to " <> show payee

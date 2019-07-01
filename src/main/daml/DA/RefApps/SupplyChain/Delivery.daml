@@ -1,0 +1,255 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Delivery where
+
+import DA.Date
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Payment
+import DA.RefApps.SupplyChain.Lock
+
+data DeliveryPlanItem = DeliveryPlanItem with
+    transportableWarehouseProduct: TransportableWarehouseProduct
+    transportCommitmentCid: ContractId TransportCommitment
+    lockedInventoryItemCid: ContractId LockedInventoryItem
+    supplierPaymentRequestCid: ContractId PaymentRequest
+  deriving (Eq, Show)
+
+-- Details of how the delivery will happen
+template DeliveryPlan
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    seller: Party
+    items: [DeliveryPlanItem]
+  where
+    signatory supplier
+    observer seller
+
+    controller seller can
+      DeliveryPlan_Archive: ()
+        do return ()
+
+data DeliveryAndPaymentPlanItem = DeliveryAndPaymentPlanItem with
+    transportableWarehouseProduct: TransportableWarehouseProduct
+    transportCommitmentCid: ContractId TransportCommitment
+    lockedInventoryItemCid: ContractId LockedInventoryItem
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+  deriving (Eq, Show)
+
+-- Extended delivery plan containing the payment requests as well. Each payment request is only visible (fetchable)
+-- to the parties involved in it.
+template DeliveryAndPaymentPlan
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    items: [DeliveryAndPaymentPlanItem]
+  where
+    signatory seller
+
+    controller seller can
+      DeliveryPlan_Start: [ContractId DeliveryInstruction]
+        do
+          forA items (\item -> create DeliveryInstruction with
+              productName = item.transportableWarehouseProduct.warehouseProduct.productName
+              warehouse = item.transportableWarehouseProduct.warehouseProduct.warehouse
+              quantity = item.transportableWarehouseProduct.warehouseProduct.quantity
+              transportCompany = item.transportableWarehouseProduct.transportCompany
+              transportCommitmentCid = item.transportCommitmentCid
+              lockedInventoryItemCid = item.lockedInventoryItemCid
+              buyerPaymentRequestCid = item.buyerPaymentRequestCid
+              supplierPaymentRequestCid = item.supplierPaymentRequestCid
+              pickUpDate = item.transportableWarehouseProduct.pickUpDate
+              deliveryDate = item.transportableWarehouseProduct.deliveryDate, ..
+            )
+
+-- Command to the transport company that it can start the delivery by picking up the product at the given warehouse
+template DeliveryInstruction
+  with
+    workflowId: WorkflowId
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    productName: Text
+    warehouse: Party
+    quantity: Int
+    transportCompany: Party
+    transportCommitmentCid: ContractId TransportCommitment
+    lockedInventoryItemCid: ContractId LockedInventoryItem
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    pickUpDate: Date
+    deliveryDate: Date
+  where
+    signatory seller
+    observer transportCompany, warehouse
+
+    controller transportCompany can
+      DeliveryInstruction_PickUp: ContractId PickUpRequest
+        do
+          now <- getTime
+          let today = toDateUTC now
+          assertMsg ("Pick up should happen on the pickup date: " <> show pickUpDate) $ (today == pickUpDate)
+          create PickUpRequest with ..
+
+-- The Delivery contract is a notification for the buyer that an item is
+-- transported to the destination and it can start the payment for it.
+template Delivery
+  with
+    workflowId: WorkflowId
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    productName: Text
+    quantity: Int
+    warehouse: Party
+    transportCompany: Party
+    transportCommitmentCid: ContractId TransportCommitment
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
+    deliveryDate: Date
+  where
+    signatory warehouse, transportCompany
+    observer buyer
+
+    controller buyer can
+      Delivery_Acknowledge: ContractId DeliveryComplete
+        do
+          now <- getTime
+          let today = toDateUTC now
+          assertMsg ("Delivery should happen on the delivery date: " <> show deliveryDate) $ (today == deliveryDate)
+          -- Payment must happen in a choice which is not visible to warehouse and transportCompany
+          create DeliveryComplete with ..
+
+-- Template to indicate that the delivery was acknowledged and the seller can start the payouts.
+template DeliveryComplete
+  with
+    workflowId: WorkflowId
+    buyer: Party
+    seller: Party
+    transportCompany: Party
+    transportCommitmentCid: ContractId TransportCommitment
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory buyer
+    observer seller
+
+    controller seller can
+      DeliveryComplete_Accept: (ContractId DeliveryPayment, ContractId PaymentObligation)
+        do
+          obligation <- exercise buyerPaymentRequestCid PaymentRequest_Pay
+          supplierPaymentRequest <- fetch supplierPaymentRequestCid
+          let supplier = supplierPaymentRequest.payee
+          -- Payments to the warehouse and transportCompany should not be visible to buyer
+          deliveryPayment <- create DeliveryPayment with ..
+          return (deliveryPayment, obligation)
+
+-- Facilitates to create the payment obligations of the seller.
+-- This contract is not visible to buyer, therefore payment to supplier can happen
+template DeliveryPayment
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    seller: Party
+    transportCompany: Party
+    transportCommitmentCid: ContractId TransportCommitment
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory seller
+
+    controller supplier can
+      DeliveryPayment_Accept: (ContractId DeliverySupplierPayment, ContractId PaymentObligation)
+        do
+          so <- exercise supplierPaymentRequestCid PaymentRequest_Pay
+          warehousePaymentRequest <- fetch warehousePaymentRequestCid
+          let warehouse = warehousePaymentRequest.payee
+          payment <- create DeliverySupplierPayment with ..
+          return (payment, so)
+
+-- Facilitates to create the payment obligations of the supplier.
+-- This contract is not visible to seller, therefore payment to warehouse can happen
+template DeliverySupplierPayment
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    transportCompany: Party
+    warehouse: Party
+    transportCommitmentCid: ContractId TransportCommitment
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
+  where
+    signatory supplier
+
+    controller supplier can
+      DeliverySupplierPayment_Pay: (ContractId PaymentObligation, ContractId PaymentObligation)
+        do
+          wo <- exercise warehousePaymentRequestCid PaymentRequest_Pay
+          to <- exercise transportCommitmentCid TransportCommitment_ReleaseAndPay
+          return (wo, to)
+
+-- Notifies the warehouse that a transport company is ready to pick up products
+template PickUpRequest
+  with
+    workflowId: WorkflowId
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    productName: Text
+    warehouse: Party
+    quantity: Int
+    transportCompany: Party
+    transportCommitmentCid: ContractId TransportCommitment
+    lockedInventoryItemCid: ContractId LockedInventoryItem
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    deliveryDate: Date
+  where
+    signatory transportCompany
+    observer warehouse
+
+    controller warehouse can
+      PickUpRequest_Accept: ContractId TransportPending
+        do
+          lockedInventoryItem <- fetch lockedInventoryItemCid
+          -- consume the locked inventory indicating that the products are no longer returning
+          archive lockedInventoryItemCid
+          create TransportPending with
+            warehousePaymentRequestCid = lockedInventoryItem.warehousePaymentRequestCid, ..
+
+-- This template indicatest that the transport is ongoing and allows the transport company to
+-- indicate the completeness of delivery to the buyer.
+template TransportPending
+  with
+    workflowId: WorkflowId
+    warehouse: Party
+    transportCompany: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    productName: Text
+    quantity: Int
+    transportCommitmentCid: ContractId TransportCommitment
+    buyerPaymentRequestCid: ContractId PaymentRequest
+    supplierPaymentRequestCid: ContractId PaymentRequest
+    warehousePaymentRequestCid: ContractId PaymentRequest
+    deliveryDate: Date
+  where
+    signatory warehouse
+
+    controller transportCompany can
+      TransportPending_Deliver: ContractId Delivery
+        do
+          create Delivery with ..

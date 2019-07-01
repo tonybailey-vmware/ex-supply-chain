@@ -1,0 +1,110 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Aggregate where
+
+import DA.Optional
+
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Payment
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Quote
+
+-- In the process of preparing the quote this template represents the aggregated quote details ready for sent to seller
+template AggregatedQuotePending
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    items: [(TransportableWarehouseProductWithPrice, ContractId TransportCommitment, ContractId LockedInventoryItem)]
+  where
+    signatory supplier
+
+    controller supplier can
+      AggregatedQuotePending_SendQuoteToSeller: ContractId AggregatedQuoteTrigger
+        do
+          deliveryItems <- forA items (\((alloc, price), ltc, lii) -> do
+            supplierPayment <- create PaymentRequest with
+              payer = seller
+              payee = supplier
+              price = price
+            return $ DeliveryPlanItem alloc ltc lii supplierPayment)
+          let quoteItems = map (\((transportable, price), tcr, lii) ->
+                PricedWarehouseProduct transportable.warehouseProduct price transportable.transportCompany transportable.deliveryDate) items
+          deliveryPlanCid <- create DeliveryPlan with
+            items = deliveryItems, ..
+          create AggregatedQuoteTrigger with
+            items = quoteItems, ..
+
+-- Serves as a visibility separation between supplier and seller to hide the warehouse and transport details
+template AggregatedQuoteTrigger
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    items: [PricedWarehouseProduct]
+    deliveryPlanCid: ContractId DeliveryPlan
+  where
+    signatory supplier
+
+    controller seller can
+      AggregatedQuoteTrigger_Execute: ContractId AggregatedQuote
+        do
+          create AggregatedQuote with ..
+
+-- Aggregated quote ready for sending to buyer and adding the margin before that
+template AggregatedQuote
+  with
+    workflowId: WorkflowId
+    supplier: Party
+    buyer: Party
+    buyerAddress: Text
+    seller: Party
+    items: [PricedWarehouseProduct]
+    deliveryPlanCid: ContractId DeliveryPlan
+  where
+    signatory seller
+    controller seller can
+      AggregatedQuote_AddMargin: ContractId QuoteForBuyer
+        with
+          margin: Decimal
+        do
+          let itemsWithMargin = map (\i -> i with price = i.price * (1.0 + margin)) items
+          let totalPrice = foldl (\price i -> price + i.price) 0.0 itemsWithMargin
+          deliveryPlan <- fetch deliveryPlanCid
+          assertMsg "Invalid workflowId" $ deliveryPlan.workflowId == workflowId
+          deliveryItems <- forA deliveryPlan.items (\item -> do
+              let pricedItemOpt = find
+                    (\i -> i.warehouseProduct.productName == item.transportableWarehouseProduct.warehouseProduct.productName &&
+                      i.warehouseProduct.warehouse == item.transportableWarehouseProduct.warehouseProduct.warehouse &&
+                      i.transportCompany == item.transportableWarehouseProduct.transportCompany
+                    )
+                    itemsWithMargin
+              assertMsg ("Corresponding quote item not found for " <> item.transportableWarehouseProduct.warehouseProduct.productName) $ isSome pricedItemOpt
+              let pricedItem = fromSome pricedItemOpt
+
+              req <- create PaymentRequest with
+                price = pricedItem.price
+                payer = buyer
+                payee = seller
+              return DeliveryAndPaymentPlanItem with
+                transportableWarehouseProduct = item.transportableWarehouseProduct
+                transportCommitmentCid = item.transportCommitmentCid
+                buyerPaymentRequestCid = req
+                supplierPaymentRequestCid = item.supplierPaymentRequestCid
+                lockedInventoryItemCid = item.lockedInventoryItemCid
+            )
+          exercise deliveryPlanCid DeliveryPlan_Archive
+          deliveryPlanCid <- create DeliveryAndPaymentPlan with
+            items = deliveryItems, ..
+          quote <- create QuoteForBuyer with
+                  items = itemsWithMargin, ..
+          return quote

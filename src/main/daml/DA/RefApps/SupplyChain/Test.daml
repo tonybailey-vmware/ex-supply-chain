@@ -1,0 +1,219 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+module DA.RefApps.SupplyChain.Test where
+
+import DA.List
+import DA.Date
+import DA.Assert
+
+import DA.RefApps.SupplyChain.Scenarios
+import DA.RefApps.SupplyChain.Relationship
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Payment
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Aggregate
+
+transportCommitmentHelper (workflowId: WorkflowId) (productName: Text) (delivery: Date) = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+
+  transportPayReq <- submit transportComp1 do
+    create PaymentRequest with
+      payer = supplier
+      payee = transportComp1
+      price = 0.1
+
+  lockTrans <- submit transportComp1 do
+    create TransportCommitment with
+      workflowId = workflowId
+      transportCompany = transportComp1
+      supplier = supplier
+      deliveryDate = delivery
+      warehouseProduct = (WarehouseProduct productName warehouse1 "address1" 55)
+      transportPaymentRequestCid = transportPayReq
+
+  return (transportPayReq, lockTrans)
+
+lockedInventoryItemHelper (workflowId: WorkflowId) (productName: Text) = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+
+  warehousePayReq <- submit warehouse1 do
+    create PaymentRequest with
+      payer = supplier
+      payee = warehouse1
+      price = 9.8
+
+  lockedInv <- submit warehouse1 do
+    create LockedInventoryItem with
+      workflowId = workflowId
+      warehouse = warehouse1
+      supplier = supplier
+      productName = productName
+      quantity = 1
+      unitPrice = 1.0
+      warehousePaymentRequestCid = warehousePayReq
+
+  return (warehousePayReq, lockedInv)
+
+
+marginTest = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+  setupData <- setup
+
+  quoteReq <- submit buyer do
+    exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
+                        products = [setupData.product01]
+  now <- getTime
+  let workflowId = show now
+
+  (transportPayReq, lockTrans) <- transportCommitmentHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
+  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper workflowId setupData.product01.productName
+
+  supplierPayReq <- submit supplier do
+    create PaymentRequest with
+      payer = seller
+      payee = supplier
+      price = 11.1
+
+  let
+    warehouseProduct1 = WarehouseProduct setupData.product01.productName warehouse1 "address1" 44
+    warehouseProduct2 = WarehouseProduct setupData.product01.productName warehouse2 "address2" 22
+    transportableWarehouseProduct1 = TransportableWarehouseProduct warehouseProduct1 transportComp1 setupData.product01.deliveryFrom setupData.product01.deliveryFrom
+    transportableWarehouseProduct2 = TransportableWarehouseProduct warehouseProduct2 transportComp2 setupData.product01.deliveryFrom setupData.product01.deliveryFrom
+    deliveryPlanItem1 = DeliveryPlanItem transportableWarehouseProduct1 lockTrans lockedInv supplierPayReq
+    deliveryPlanItem2 = DeliveryPlanItem transportableWarehouseProduct2 lockTrans lockedInv supplierPayReq
+    pricedWarehouseProduct1 = PricedWarehouseProduct warehouseProduct1 11.1 transportComp1 (date 2019 Jan 11)
+    pricedWarehouseProduct2 = PricedWarehouseProduct warehouseProduct2 23.0 transportComp1 (date 2019 Jan 11)
+
+  plan <- submit supplier do
+    create DeliveryPlan with
+      workflowId = workflowId
+      supplier = supplier
+      buyer = buyer
+      seller = seller
+      items = [deliveryPlanItem1, deliveryPlanItem2]
+
+  aggregated <- submit seller do
+    create AggregatedQuote with
+      workflowId = workflowId
+      supplier = supplier
+      buyer = buyer
+      buyerAddress = "none"
+      seller = seller
+      items = [pricedWarehouseProduct1, pricedWarehouseProduct2]
+      deliveryPlanCid = plan
+
+  quoteCid <- submit seller do
+    exercise aggregated $ AggregatedQuote_AddMargin 0.1
+
+  quote <- submit seller do fetch quoteCid
+  quote.totalPrice === (11.1 * 1.1) + (23.0 * 1.1)
+  (length quote.items) === 2
+  let firstItem = head quote.items
+  assertMsg "Product name is wrong" $ all (\i -> i.warehouseProduct.productName == setupData.product01.productName) quote.items
+  firstItem.price === (11.1 * 1.1)
+
+  let secondItem = head (tail quote.items)
+  secondItem.price === (23.0 * 1.1)
+
+  deliveryPlan <- submit seller do fetch quote.deliveryPlanCid
+  (length quote.items) === 2
+  assertMsg "Product name is wrong" $ all (\i -> i.transportableWarehouseProduct.warehouseProduct.productName == setupData.product01.productName) deliveryPlan.items
+  let firstDeliv = head deliveryPlan.items
+  firstSupplierPayReq <- submit supplier do fetch firstDeliv.supplierPaymentRequestCid
+  firstSupplierPayReq.price === 11.1
+  buyerPaymentRequest <- submit buyer do fetch firstDeliv.buyerPaymentRequestCid
+  buyerPaymentRequest.price === 11.1 * 1.1
+
+  return ()
+
+paymentTest = scenario do
+  buyer <- getParty "Buyer"
+  seller <- getParty "Seller"
+  supplier <- getParty "Supplier"
+  warehouse1 <- getParty "Warehouse1"
+  warehouse2 <- getParty "Warehouse2"
+  transportComp1 <- getParty "TransportCompany1"
+  transportComp2 <- getParty "TransportCompany2"
+  setupData <- setup
+
+  quoteReq <- submit buyer do
+    exercise setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
+                        products = [setupData.product01]
+
+  now <- getTime
+  let workflowId = show now
+
+  passToDate $ date 2019 Dec 1
+
+  (transportPayReq, lockTrans) <- transportCommitmentHelper workflowId setupData.product01.productName setupData.product01.deliveryFrom
+
+  buyerPayReq <- submit seller do
+    create PaymentRequest with
+      payer = buyer
+      payee = seller
+      price = 11.1
+
+  (warehousePayReq, lockedInv) <- lockedInventoryItemHelper workflowId setupData.product01.productName
+
+  supplierPayReq <- submit supplier do
+    create PaymentRequest with
+      payer = seller
+      payee = supplier
+      price = 11.2
+
+  pickupRequest <- submit transportComp1 do
+    create PickUpRequest with
+      workflowId = workflowId
+      buyer = buyer
+      buyerAddress = "none"
+      seller = seller
+      productName = setupData.product01.productName
+      quantity = 1
+      warehouse = warehouse1
+      transportCompany = transportComp1
+      transportCommitmentCid = lockTrans
+      buyerPaymentRequestCid = buyerPayReq
+      supplierPaymentRequestCid = supplierPayReq
+      lockedInventoryItemCid = lockedInv
+      deliveryDate = setupData.product01.deliveryFrom
+
+  transportPending <- submit warehouse1 do
+    exercise pickupRequest PickUpRequest_Accept
+
+  delivery <- submit transportComp1 do
+    exercise transportPending TransportPending_Deliver
+
+  complete <- submit buyer do
+    exercise delivery Delivery_Acknowledge
+
+  (deliveryPayment, buyerSellerObligation) <- submit seller do
+    exercise complete DeliveryComplete_Accept
+
+  submit supplier do
+    (supplierPayment, _) <- exercise deliveryPayment DeliveryPayment_Accept
+    exercise supplierPayment DeliverySupplierPayment_Pay
+
+  return ()
