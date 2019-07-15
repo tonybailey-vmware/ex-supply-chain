@@ -57,7 +57,7 @@ jobs:
       - run:
           name: Run Blackduck Detect
           command: |
-            bash <(curl -s https://raw.githubusercontent.com/DACH-NY/security-blackduck/master/synopsys-detect) ci-build digitalasset_ex-supply-chain master --logging.level.com.synopsys.integration=DEBUG
+            bash <(curl -s https://raw.githubusercontent.com/DACH-NY/security-blackduck/master/synopsys-detect) ci-build digitalasset_ex-supply-chain master --logging.level.com.synopsys.integration=DEBUG --detect.notices.report=true
 
   daml_test:
     parameters:
