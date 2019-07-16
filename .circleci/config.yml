@@ -129,7 +129,6 @@ jobs:
               echo "archiving"
               package="supply-chain-$version.tar.gz"
               pushd /tmp/workspace
-              cp generated-sources/license/NOTICE .
               tar -czf "$package" *.jar *.dar lib NOTICE
               popd
 
