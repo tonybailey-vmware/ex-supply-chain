@@ -15,7 +15,7 @@ The Supply Chain application demonstrates a generic example between a Buyer, Sel
 
 #### Prerequisites
 Be sure you have the following installed:
-* DAML SDK 0.12.21
+* DAML SDK
 * Docker
 * Java
 * Maven
