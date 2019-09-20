@@ -38,7 +38,7 @@ daml start
 
 2. Run bots:
 ```bash
-java -jar target/supplychain-0.0.1-SNAPSHOT.jar -p 7600
+java -jar target/supplychain-0.0.1-SNAPSHOT.jar
 ```
 You can now  navigate to the URL: localhost:7500 with a browser to interact with the application.
 
