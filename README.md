@@ -40,9 +40,8 @@ daml start
 ```bash
 java -jar target/supplychain-0.0.1-SNAPSHOT.jar
 ```
-You can now  navigate to the URL: localhost:7500 with a browser to interact with the application.
 
-**Important:** "localhost" on which the application is run should not have a web-facing IP address assigned to it.
+3. Navigate to the URL: http://localhost:7500 with a browser to interact with the application.
 
 ### Running with Docker-compose
 _**Note:** This works on Linux, but, on MacOS, the Docker configuration needs to be changed to use at least 6 CPUs, due to a bug in the platform._
@@ -67,7 +66,7 @@ Reset the application by following these steps:
 
 3. Stop the running application on each of the terminal tabs (using **CTRL+C**) and start again.
 
-## This Guide
+## User Guide
 This User Guide will take you step-by-step through the whole supply chain process described in the Overview.
 
 _**Note:** This demo is designed to show successful conclusion of the supply chain workflow without exceptions or error conditions. A full production implementation would include additional features, handle errors and exceptions, and incorporate appropriate security controls._
