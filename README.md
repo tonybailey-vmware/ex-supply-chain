@@ -176,7 +176,7 @@ To request a quote:
 4. Select the **BuyerSellerRelationship_SendQuoteRequest** choice.
 5. Click on **Add new element**
 6. Fill in the parameters:
-    * productName: the name of the ordered product (must match an existing inventory item)
+    * productName: the name of the ordered product (_must match an existing inventory item_, see them on the Inventory page logged in as Supplier)
     * quantity: the ordered quantity
     * deliveryFrom: the start of the acceptable delivery period
     * deliveryTo: the end of the acceptable delivery period
@@ -266,6 +266,8 @@ Note that Supplier can see the available quantity of goods in each warehouse, as
 5. Fill in the parameter:
     * margin: a decimal number describing the margin (e.g. `0.1` means 10% margin)
 6. Choose **Submit**.
+
+_Note:_ You cannot click on the contract if you did not start the bots. In this case you need to start over, and make sure the bots run.
 
 ### Order and Delivery
 
