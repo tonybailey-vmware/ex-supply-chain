@@ -9,6 +9,7 @@ module DA.RefApps.SupplyChain.QuoteRequest where
 import DA.Action
 import DA.List
 import DA.Optional
+import DA.Text
 
 import DA.RefApps.SupplyChain.Types
 import DA.RefApps.SupplyChain.Quote
@@ -28,7 +29,7 @@ warehouseToAddress : Party -> Text
 warehouseToAddress p =
     fromSomeNote ("Unknown address for party: " <> pStr) $ M.lookup pStr warehouseAddresses
   where
-    pStr = partyToText p
+    pStr = head $ splitOn "::" $ partyToText p
 
 -- Template sent from Buyer to Seller to request a quote for delivering a set of products
 template QuoteRequest
