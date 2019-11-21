@@ -11,8 +11,8 @@ parties2.foreach{ enable_party(participant2, _) }
 all_participants upload_dar path
 scenario load path
 
-generate_navigator_conf(participant1,Some(new java.io.File("participant1.conf")))
-generate_navigator_conf(participant2,Some(new java.io.File("participant2.conf")))
+generate_navigator_conf(participant1,Some(new java.io.File("ui-backend1.conf")))
+generate_navigator_conf(participant2,Some(new java.io.File("ui-backend2.conf")))
 
 //scenario run "DA.RefApps.SupplyChain.Scenarios:setup"
 scenario run "DA.RefApps.SupplyChain.Scenarios:fullScenario"
