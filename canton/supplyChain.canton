@@ -1,0 +1,14 @@
+all start
+
+val refappPath = sys.env.get("REFAPPPATH").getOrElse("./../ex-supply-chain")
+val path = refappPath + "/target/supplychain.dar"
+connect(participant1, mydomain)
+connect(participant2, mydomain)
+val parties1 = Seq("Seller", "Supplier", "Warehouse1", "TransportCompany1")
+val parties2 = Seq("Buyer", "Warehouse2", "TransportCompany2")
+parties1.foreach{ enable_party(participant1, _) }
+parties2.foreach{ enable_party(participant2, _) }
+all_participants upload_dar path
+scenario load path
+scenario run "DA.RefApps.SupplyChain.Scenarios:setup"
+status
