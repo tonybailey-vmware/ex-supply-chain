@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-sdk-version: 0.13.55
+sdk-version: 1.0.0
 name: supplychain
-source: src/main/daml/DA/RefApps/SupplyChain/Scenarios.daml
-scenario: DA.RefApps.SupplyChain.Scenarios:setup
+source: src/main/daml
+init-script: DA.RefApps.SupplyChain.LedgerSetupScript:initialize
 parties:
   - Buyer
   - Seller
@@ -20,3 +20,4 @@ exposed-modules: []
 dependencies:
   - daml-prim
   - daml-stdlib
+  - daml-script

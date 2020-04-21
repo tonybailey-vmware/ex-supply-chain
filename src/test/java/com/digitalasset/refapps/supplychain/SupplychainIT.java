@@ -4,7 +4,10 @@
  */
 package com.digitalasset.refapps.supplychain;
 
-import static com.digitalasset.testing.Dsl.*;
+import static com.digitalasset.testing.Dsl.list;
+import static com.digitalasset.testing.Dsl.party;
+import static com.digitalasset.testing.Dsl.record;
+import static com.digitalasset.testing.Dsl.text;
 
 import com.daml.ledger.javaapi.data.Party;
 import com.daml.ledger.javaapi.data.Text;
@@ -15,11 +18,21 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.InvalidProtocolBufferException;
 import da.refapps.supplychain.aggregate.AggregatedQuote;
 import da.refapps.supplychain.aggregate.AggregatedQuotePending;
-import da.refapps.supplychain.delivery.*;
+import da.refapps.supplychain.delivery.Delivery;
+import da.refapps.supplychain.delivery.DeliveryInstruction;
+import da.refapps.supplychain.delivery.DeliveryPayment;
+import da.refapps.supplychain.delivery.DeliverySupplierPayment;
+import da.refapps.supplychain.delivery.PickUpRequest;
+import da.refapps.supplychain.delivery.TransportPending;
 import da.refapps.supplychain.order.ConfirmedOrder;
 import da.refapps.supplychain.quote.QuoteForBuyer;
 import da.refapps.supplychain.quote.TransportQuoteItem;
-import da.refapps.supplychain.quoterequest.*;
+import da.refapps.supplychain.quoterequest.QuoteRequest;
+import da.refapps.supplychain.quoterequest.QuoteRequestAccepted;
+import da.refapps.supplychain.quoterequest.QuoteRequestSupplyInvitation;
+import da.refapps.supplychain.quoterequest.SupplyRequest;
+import da.refapps.supplychain.quoterequest.TransportQuoteRequest;
+import da.refapps.supplychain.quoterequest.TransportQuoteRequestPending;
 import da.refapps.supplychain.relationship.BuyerSellerRelationship;
 import da.refapps.supplychain.types.OrderedProduct;
 import da.refapps.supplychain.types.WarehouseProduct;
@@ -32,7 +45,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.concurrent.TimeoutException;
-import org.junit.*;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExternalResource;
 
 public class SupplychainIT {
@@ -42,8 +57,8 @@ public class SupplychainIT {
   private static final Path RELATIVE_DAR_PATH = Paths.get("./target/supplychain.dar");
   private static final Integer sandboxPort = 6865;
   private static final int WAIT_TIMEOUT = 20;
-  private static final String TEST_MODULE = "DA.RefApps.SupplyChain.Scenarios";
-  private static final String TEST_SCENARIO = "setup";
+  private static final String TEST_MODULE = "DA.RefApps.SupplyChain.LedgerSetupScript";
+  private static final String TEST_SCRIPT = "initialize";
 
   private static Party BUYER_PARTY = new Party("Buyer");
   private static Party SELLER_PARTY = new Party("Seller");
@@ -60,7 +75,7 @@ public class SupplychainIT {
       Sandbox.builder()
           .dar(RELATIVE_DAR_PATH)
           .module(TEST_MODULE)
-          .scenario(TEST_SCENARIO)
+          .startScript(TEST_SCRIPT)
           .parties(BUYER_PARTY.getValue(), SELLER_PARTY.getValue(), SUPPLIER_PARTY.getValue())
           .setupAppCallback(SupplyChain::runBots)
           .build();
