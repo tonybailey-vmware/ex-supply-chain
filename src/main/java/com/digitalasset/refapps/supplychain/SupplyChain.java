@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,12 +8,7 @@ import com.daml.ledger.rxjava.DamlLedgerClient;
 import com.daml.ledger.rxjava.components.Bot;
 import com.digitalasset.refapps.supplychain.util.CliOptions;
 import com.digitalasset.refapps.supplychain.util.CommandsAndPendingSetBuilder;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,15 +23,11 @@ public class SupplyChain {
   private static final String WAREHOUSE1 = "Warehouse1";
   private static final String WAREHOUSE2 = "Warehouse2";
 
-  private static final AtomicReference<Clock> clock =
-      new AtomicReference<>(Clock.fixed(Instant.ofEpochSecond(0), ZoneId.systemDefault()));
-
   public static void main(String[] args) throws InterruptedException {
     CliOptions options = CliOptions.parseArgs(args);
 
     DamlLedgerClient client =
-        DamlLedgerClient.forHostWithLedgerIdDiscovery(
-            options.getSandboxHost(), options.getSandboxPort(), Optional.empty());
+        DamlLedgerClient.newBuilder(options.getSandboxHost(), options.getSandboxPort()).build();
     logger.info(
         "Waiting for DAML Sandbox on {}:{}", options.getSandboxHost(), options.getSandboxPort());
     runBots(client);
@@ -49,14 +40,6 @@ public class SupplyChain {
   public static void runBots(DamlLedgerClient client) {
     waitForSandbox(client);
     logger.info("Connected to DAML Sandbox.");
-
-    // We create a Flowable<Instant> clockFlowable to set the time
-    client
-        .getTimeClient()
-        .getTime()
-        .doOnNext(ts -> logger.info("Received time change {}", ts))
-        .doOnNext(ts -> clock.set(Clock.fixed(ts, ZoneId.systemDefault())))
-        .subscribe();
 
     Duration mrt = Duration.ofSeconds(10);
     CommandsAndPendingSetBuilder.Factory commandBuilderFactory =
