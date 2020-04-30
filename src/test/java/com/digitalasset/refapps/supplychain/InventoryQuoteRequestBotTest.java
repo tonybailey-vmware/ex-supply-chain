@@ -23,21 +23,17 @@ import java.util.List;
 import java.util.Optional;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Test;
-import org.pcollections.HashTreePMap;
 
 public class InventoryQuoteRequestBotTest {
   private static final String PARTY = "TESTPARTY";
 
   final CommandsAndPendingSetBuilder.Factory commandBuilder =
       CommandsAndPendingSetBuilder.factory("appId", Duration.ofSeconds(5));
-  private LedgerViewFlowable.LedgerTestView<Template> ledgerView;
   private final InventoryQuoteRequestBot bot = new InventoryQuoteRequestBot(commandBuilder, PARTY);
 
   @Test
   public void calculateCommands() {
-    ledgerView =
-        new LedgerViewFlowable.LedgerTestView(
-            HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty(), HashTreePMap.empty());
+    LedgerViewFlowable.LedgerTestView<Template> ledgerView = Helpers.emptyLedgerTestView();
 
     // Delivery date: between LocalDate MIN and MAX
     OrderedProduct product = new OrderedProduct("Product1", 100L, LocalDate.MIN, LocalDate.MAX);
