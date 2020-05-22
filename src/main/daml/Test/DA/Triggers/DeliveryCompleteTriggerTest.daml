@@ -1,0 +1,67 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+daml 1.2
+
+module Test.DA.Triggers.DeliveryCompleteTriggerTest where
+
+import Daml.Trigger.Assert
+import DA.Assert
+import DA.Date
+
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Lock
+import DA.RefApps.SupplyChain.Payment
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Triggers.DeliveryCompleteTrigger
+
+import Test.DA.Triggers.TriggerTestUtils
+
+allDeliveriesAcceptedTest: Scenario ()
+allDeliveriesAcceptedTest = scenario do
+  party <- getParty "party"
+  deliveryComplete1 <- submit party do
+    createDeliveryComplete party
+  deliveryComplete2 <- submit party do
+    createDeliveryComplete party
+  let acs = toACS deliveryComplete1 <> toACS deliveryComplete2
+
+  commands <- testTrigger trigger party acs
+
+  length commands === 2
+  assertExerciseCmd commands $ \(cid, actualChoice) -> do
+    deliveryComplete1 === cid
+    DeliveryComplete_Accept === actualChoice
+  assertExerciseCmd commands $ \(cid, actualChoice) -> do
+    deliveryComplete2 === cid
+    DeliveryComplete_Accept === actualChoice
+
+  where
+    createDeliveryComplete : Party -> Update (ContractId DeliveryComplete)
+    createDeliveryComplete party = do
+      dummyPaymentRequestCid <- create PaymentRequest with
+        payer = party
+        payee = party
+        price = 1.0
+      dummyTransportCommitmentCid <- create TransportCommitment with
+        workflowId = ""
+        transportCompany = party
+        supplier = party
+        warehouseProduct = WarehouseProduct with
+          productName = ""
+          warehouse = party
+          warehouseAddress = ""
+          quantity = 0
+        deliveryDate = date 1970 Jan 1
+        transportPaymentRequestCid = dummyPaymentRequestCid
+      create DeliveryComplete with
+        workflowId = ""
+        buyer = party
+        seller = party
+        transportCompany = party
+        transportCommitmentCid = dummyTransportCommitmentCid
+        buyerPaymentRequestCid = dummyPaymentRequestCid
+        supplierPaymentRequestCid = dummyPaymentRequestCid
+        warehousePaymentRequestCid = dummyPaymentRequestCid

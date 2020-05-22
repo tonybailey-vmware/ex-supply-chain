@@ -5,13 +5,13 @@
 
 daml 1.2
 
-module DA.RefApps.SupplyChain.Triggers.AggregatedQuoteTrigger where
+module DA.RefApps.SupplyChain.Triggers.DeliveryCompleteTrigger where
 
 import Daml.Trigger
 import DA.Foldable hiding (length)
 import DA.Next.Map
 
-import DA.RefApps.SupplyChain.Aggregate
+import DA.RefApps.SupplyChain.Delivery
 
 trigger : Trigger ()
 trigger = Trigger
@@ -19,14 +19,14 @@ trigger = Trigger
   , updateState = \_ _ _ -> ()
   , rule = triggerRule
   , registeredTemplates = RegisteredTemplates [
-      registeredTemplate @AggregatedQuoteTrigger
+      registeredTemplate @DeliveryComplete
     ]
   , heartbeat = None
   }
 
 triggerRule : Party -> ACS -> Time -> Map CommandId [Command] -> () -> TriggerA ()
 triggerRule _party activeContracts _ _ () =
-  forA_ aggregatedQuotes $ \(cid, _) ->
-    dedupExercise cid AggregatedQuoteTrigger_Execute
+  forA_ deliveryCompletes $ \(cid, _) ->
+    dedupExercise cid DeliveryComplete_Accept
  where
-  aggregatedQuotes = getContracts @AggregatedQuoteTrigger activeContracts
+  deliveryCompletes = getContracts @DeliveryComplete activeContracts
