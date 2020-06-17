@@ -193,7 +193,6 @@ workflows:
               only:
                 - master
                 - ERA-847-ui # TODO remove after merge
-                - fix-blackduck # TODO remove after merge
   build_and_release:
     jobs:
       - daml_test:
