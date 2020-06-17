@@ -1,16 +1,16 @@
 import { makeStyles, createStyles } from "@material-ui/styles";
 
 export default makeStyles((theme : any) => createStyles({
+  scrollable: {
+    width: '100%',
+    overflowX: 'auto',
+  },
   tableCell: {
     verticalAlign: "top",
     paddingTop: 6,
     paddingBottom: 6,
-    fontSize: "0.75rem"
-  },
-  tableCellButton: {
-    verticalAlign: "center",
-    paddingTop: 0,
-    paddingBottom: 0,
+    paddingLeft: 8,
+    paddingRight: 8,
     fontSize: "0.75rem"
   },
   tableRow: {
@@ -30,8 +30,7 @@ export default makeStyles((theme : any) => createStyles({
       borderBottomColor: `${theme.palette.primary.light} !important`,
     },
   },
-  choiceButton: {
-    paddingTop: 0,
-    paddingBottom: 0,
-  },
+  marginB: {
+    marginBottom: theme.spacing(2),
+  }
 }));
