@@ -1,3 +1,8 @@
+///
+/// Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+/// SPDX-License-Identifier: Apache-2.0
+///
+
 import * as jwt from "jsonwebtoken";
 
 export const isLocalDev = process.env.NODE_ENV === 'development';
