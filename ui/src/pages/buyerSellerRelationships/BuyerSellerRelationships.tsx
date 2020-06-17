@@ -13,11 +13,9 @@ export default function ValidEmission() {
       <Contracts
         contracts={roles.contracts}
         columns={[
-          { name: "Company name", path: "payload.company" },
-          { name: "Amount", path: "payload.amount" },
-          { name: "Auditor", path: "payload.auditor" },
-          { name: "Year", path: "payload.year" },
-          { name: "Quarter", path: "payload.quarter" },
+          { name: "Buyer", path: "payload.buyer" },
+          { name: "Buyer Address", path: "payload.buyerAddress" },
+          { name: "Seller", path: "payload.seller" },
         ]}
         actions={[]}
         dialogs={[]}
