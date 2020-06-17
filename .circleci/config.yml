@@ -33,7 +33,7 @@ commands:
     steps:
       - run:
           command: |
-            curl -sSL https://get.daml.com/ | sh /dev/stdin << parameters.daml_sdk_version >>
+            curl -sSL https://get.daml.com/ | sh /dev/stdin << parameters.version >>
 
 jobs:
   mvn_test:
