@@ -7,7 +7,7 @@ import TableBody from "@material-ui/core/TableBody";
 import Button from "@material-ui/core/Button";
 import { useStreamQuery, useLedger, useParty } from "@daml/react";
 import { CreateEvent } from "@daml/ledger";
-import { Appraise, Asset, Give  } from "@daml.js/daml-ui-template-0.0.1/lib/Main";
+import { Appraise, Asset, Give  } from "@daml.js/supplychain-1.0.0/lib/Main";
 import { InputDialog, InputDialogProps } from "./InputDialog";
 import useStyles from "./styles";
 
