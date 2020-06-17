@@ -196,8 +196,8 @@
                     </excludes>
                     <mapping>
                         <daml>DOUBLEDASHES_STYLE</daml>
-                        <tsx>DOUBLEDASHES_STYLE</tsx>
                         <java>SLASHSTAR_STYLE</java>
+                        <tsx>SLASHSTAR_STYLE</tsx>
                         <Dockerfile>SCRIPT_STYLE</Dockerfile>
                     </mapping>
                 </configuration>
