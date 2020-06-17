@@ -1,12 +1,3 @@
---
--- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
--- SPDX-License-Identifier: Apache-2.0
---
-
-/*
- * Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
- */
 import React, { useEffect } from "react";
 import { HashRouter, Route, Switch, Redirect } from "react-router-dom";
 import { useUserState, useUserDispatch } from "../context/UserContext";
