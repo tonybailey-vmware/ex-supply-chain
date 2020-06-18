@@ -79,4 +79,7 @@ export default makeStyles((theme : any) => createStyles({
   loginLoader: {
     marginLeft: theme.spacing(4),
   },
+  formControl: {
+    width: "100%",
+  },
 }));
