@@ -10,28 +10,29 @@ import Contracts from "../../components/Contracts/Contracts";
 import { useLedger, useStreamQuery } from "@daml/react";
 import { BuyerSellerRelationship, BuyerSellerRelationship_SendQuoteRequest }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Relationship";
-import { CreateEvent } from "@daml/ledger";
+import Ledger, { CreateEvent } from "@daml/ledger";
 import { OrderedProduct } from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Types/module";
 
-export default function BuyerSellerRelationships() {
-  const [isDialogOpen, setDialogIsOpen] = useState(false);
-  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<BuyerSellerRelationship> | undefined);
+function OrderedProductInput(
+  props:
+    {
+      ledger: Ledger,
+      createEvent: CreateEvent<BuyerSellerRelationship, unknown, string> | undefined,
+      isDialogOpen: boolean,
+      setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+    }) {
   const [fields, setFields] = useState([] as OrderedProduct[]);
 
-  const ledger = useLedger();
-  const roles =
-    useStreamQuery(BuyerSellerRelationship);
-
   function sendQuoteRequest() {
-    if (createEvent !== undefined) {
+    if (props.createEvent !== undefined) {
       const parameters: BuyerSellerRelationship_SendQuoteRequest = {
         "products": fields
       }
-      ledger.exercise(
+      props.ledger.exercise(
         BuyerSellerRelationship.BuyerSellerRelationship_SendQuoteRequest,
-        createEvent.contractId,
+        props.createEvent.contractId,
         parameters);
-      setDialogIsOpen(false);
+      props.setDialogOpen(false);
     } else {
       console.error("Unreachable: Create event is undefined!");
     }
@@ -74,96 +75,108 @@ export default function BuyerSellerRelationships() {
     setFields(values);
   }
 
+  return (
+    <Dialog open={props.isDialogOpen} key="quoteReq" onClose={() => ({})} maxWidth={false} fullWidth>
+    <DialogTitle>
+      Quote request
+    </DialogTitle>
+    <DialogContent>
+      <Grid container spacing={3}>
+        { fields.map((field, i) => {
+          return (
+            <Grid container item spacing={3} xs={12}>
+              <Grid item xs>
+              <TextField
+                required
+                autoFocus
+                key={"productName" + i}
+                type="text"
+                name="productName"
+                label="Product name"
+                value={field.productName}
+                onChange={(event) => handleChangeInput(i, event) }
+                fullWidth
+              />
+              </Grid>
+              <Grid item xs={2}>
+              <TextField
+                required
+                autoFocus
+                key={"quantity" + i}
+                type="number"
+                name="quantity"
+                label="Quantity"
+                value={field.quantity}
+                onChange={(event) => handleChangeInput(i, event) }
+                fullWidth
+              />
+              </Grid>
+              <Grid item xs={2}>
+              <TextField
+                required
+                autoFocus
+                key={"deliveryFrom" + i}
+                type="date"
+                name="deliveryFrom"
+                label="Delivery from"
+                value={field.deliveryFrom}
+                InputLabelProps={{ shrink: true }}
+                onChange={(event) => handleChangeInput(i, event) }
+                fullWidth
+              />
+              </Grid>
+              <Grid item xs={2}>
+              <TextField
+                required
+                autoFocus
+                key={"deliveryTo" + i}
+                type="date"
+                name="deliveryTo"
+                label="Delivery to"
+                value={field.deliveryTo}
+                InputLabelProps={{ shrink: true }}
+                onChange={(event) => handleChangeInput(i, event) }
+                fullWidth
+              />
+              </Grid>
+              <Grid item xs={1}>
+              <Button key={"minus" + i} onClick={() => handleRemoveInput(i)}>−</Button>
+              </Grid>
+            </Grid>);
+        }) }
+        <Button key="plus" onClick={() => handleAddInput()}>+ Add</Button>
+      </Grid>
+    </DialogContent>
+    <DialogActions>
+      <Button key="cancel" onClick={() => props.setDialogOpen(false) } color="primary">
+        Cancel
+      </Button>
+      <Button key="okay" onClick={() => sendQuoteRequest() } color="primary">
+        Okay
+      </Button>
+    </DialogActions>
+  </Dialog>);
+}
+
+export default function BuyerSellerRelationships() {
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<BuyerSellerRelationship> | undefined);
+
+  const ledger = useLedger();
+  const roles =
+    useStreamQuery(BuyerSellerRelationship);
+
   function showQuoteRequestDialog(
             createEvent : CreateEvent<BuyerSellerRelationship>,
             _unused : any) {
-    setDialogIsOpen(true);
+    setDialogOpen(true);
     setCreateEvent(createEvent);
   };
 
   return (
     <>
       <div>
-      <Dialog open={isDialogOpen} key="quoteReq" onClose={() => ({})} maxWidth={false} fullWidth>
-        <DialogTitle>
-          Quote request
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={3}>
-            { fields.map((field, i) => {
-              return (
-                <Grid container item spacing={3} xs={12}>
-                  <Grid item xs>
-                  <TextField
-                    required
-                    autoFocus
-                    key={"productName" + i}
-                    type="text"
-                    name="productName"
-                    label="Product name"
-                    value={field.productName}
-                    onChange={(event) => handleChangeInput(i, event) }
-                    fullWidth
-                  />
-                  </Grid>
-                  <Grid item xs={2}>
-                  <TextField
-                    required
-                    autoFocus
-                    key={"quantity" + i}
-                    type="number"
-                    name="quantity"
-                    label="Quantity"
-                    value={field.quantity}
-                    onChange={(event) => handleChangeInput(i, event) }
-                    fullWidth
-                  />
-                  </Grid>
-                  <Grid item xs={2}>
-                  <TextField
-                    required
-                    autoFocus
-                    key={"deliveryFrom" + i}
-                    type="date"
-                    name="deliveryFrom"
-                    label="Delivery from"
-                    value={field.deliveryFrom}
-                    InputLabelProps={{ shrink: true }}
-                    onChange={(event) => handleChangeInput(i, event) }
-                    fullWidth
-                  />
-                  </Grid>
-                  <Grid item xs={2}>
-                  <TextField
-                    required
-                    autoFocus
-                    key={"deliveryTo" + i}
-                    type="date"
-                    name="deliveryTo"
-                    label="Delivery to"
-                    value={field.deliveryTo}
-                    InputLabelProps={{ shrink: true }}
-                    onChange={(event) => handleChangeInput(i, event) }
-                    fullWidth
-                  />
-                  </Grid>
-                  <Grid item xs={1}>
-                  <Button key={"minus" + i} onClick={() => handleRemoveInput(i)}>−</Button>
-                  </Grid>
-                </Grid>);
-            }) }
-            <Button key="plus" onClick={() => handleAddInput()}>+ Add</Button>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button key="cancel" onClick={() => setDialogIsOpen(false) } color="primary">
-            Cancel
-          </Button>
-          <Button key="okay" onClick={() => sendQuoteRequest() } color="primary">
-            Okay
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <OrderedProductInput ledger={ledger} createEvent={createEvent} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} />
       <Contracts
         contracts={roles.contracts}
         columns={[
