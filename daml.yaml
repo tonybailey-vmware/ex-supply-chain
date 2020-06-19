@@ -7,6 +7,8 @@ sdk-version: 1.2.0
 name: supplychain
 source: src/main/daml
 init-script: DA.RefApps.SupplyChain.LedgerSetupScript:initialize
+sandbox-options:
+  - --ledgerid=supply-chain
 parties:
   - Buyer
   - Seller
