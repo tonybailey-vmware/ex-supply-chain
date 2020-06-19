@@ -1,5 +1,5 @@
 {
-  "name": "daml-ui-template-ts",
+  "name": "supply-chain",
   "version": "0.0.1",
   "private": true,
   "dependencies": {

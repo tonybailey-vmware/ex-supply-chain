@@ -9,7 +9,7 @@ export const isLocalDev = process.env.NODE_ENV === 'development';
 
 let host = window.location.host.split('.')
 
-export const ledgerId = isLocalDev ? "daml-ui-template" : host[0];
+export const ledgerId = "supply-chain";
 
 let apiUrl = host.slice(1)
 apiUrl.unshift('api')
@@ -27,9 +27,11 @@ export const wsBaseUrl =
     ? 'ws://localhost:7575/'
     : undefined;
 
-const applicationId = "daml-ui-template";
+const applicationId = "supply-chain";
 
-export const createToken = (party : string) => jwt.sign({ "https://daml.com/ledger-api": { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } }, "secret")
+export function createToken(party : string): string {
+    return jwt.sign({ "https://daml.com/ledger-api": { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } }, "secret")
+}
 
 let loginUrl = host.slice(1)
 loginUrl.unshift('login')
