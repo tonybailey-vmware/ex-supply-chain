@@ -16,7 +16,6 @@ import { CreateEvent } from "@daml/ledger";
 import { OrderedProduct } from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Types/module";
 
 export default function BuyerSellerRelationships() {
-
   const [isDialogOpen, setDialogIsOpen] = useState(false);
   const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<BuyerSellerRelationship> | undefined);
   const [fields, setFields] = useState([] as OrderedProduct[]);
@@ -36,7 +35,7 @@ export default function BuyerSellerRelationships() {
         parameters);
       setDialogIsOpen(false);
     } else {
-      console.error("Create event is undefined!");
+      console.error("Unreachable: Create event is undefined!");
     }
   };
 
@@ -73,10 +72,7 @@ export default function BuyerSellerRelationships() {
 
   function handleRemoveInput(i: number) {
     const values = [...fields];
-    console.log("--------------------------------");
-    console.log(values);
     values.splice(i, 1);
-    console.log(values);
     setFields(values);
   }
 
@@ -90,42 +86,45 @@ export default function BuyerSellerRelationships() {
   return (
     <>
       <div>
-      <Dialog open={isDialogOpen} key="quoteReq" onClose={() => ({})} maxWidth="sm" fullWidth>
+      <Dialog open={isDialogOpen} key="quoteReq" onClose={() => ({})} maxWidth={false} fullWidth>
         <DialogTitle>
           Quote request
         </DialogTitle>
         <DialogContent>
-          <Grid>
-          <form>
+          <Grid container spacing={3}>
             { fields.map((field, i) => {
               return (
-                <>
+                <Grid container item spacing={3} xs={12}>
+                  <Grid item xs>
                   <TextField
                     required
                     autoFocus
-                    fullWidth={true}
                     key={"productName" + i}
                     type="text"
                     name="productName"
                     label="Product name"
                     value={field.productName}
                     onChange={(event) => handleChangeInput(i, event) }
+                    fullWidth
                   />
+                  </Grid>
+                  <Grid item xs={2}>
                   <TextField
                     required
                     autoFocus
-                    fullWidth={true}
                     key={"quantity" + i}
                     type="number"
                     name="quantity"
                     label="Quantity"
                     value={field.quantity}
                     onChange={(event) => handleChangeInput(i, event) }
+                    fullWidth
                   />
+                  </Grid>
+                  <Grid item xs={2}>
                   <TextField
                     required
                     autoFocus
-                    fullWidth={true}
                     key={"deliveryFrom" + i}
                     type="date"
                     name="deliveryFrom"
@@ -133,11 +132,13 @@ export default function BuyerSellerRelationships() {
                     value={field.deliveryFrom}
                     InputLabelProps={{ shrink: true }}
                     onChange={(event) => handleChangeInput(i, event) }
+                    fullWidth
                   />
+                  </Grid>
+                  <Grid item xs={2}>
                   <TextField
                     required
                     autoFocus
-                    fullWidth={true}
                     key={"deliveryTo" + i}
                     type="date"
                     name="deliveryTo"
@@ -145,12 +146,15 @@ export default function BuyerSellerRelationships() {
                     value={field.deliveryTo}
                     InputLabelProps={{ shrink: true }}
                     onChange={(event) => handleChangeInput(i, event) }
+                    fullWidth
                   />
+                  </Grid>
+                  <Grid item xs={1}>
                   <Button key={"minus" + i} onClick={() => handleRemoveInput(i)}>−</Button>
-                </>);
+                  </Grid>
+                </Grid>);
             }) }
-          <Button key="plus" onClick={() => handleAddInput()}>{ (fields.length === 0) ? "+ Add" : "+" }</Button>
-          </form>
+            <Button key="plus" onClick={() => handleAddInput()}>+ Add</Button>
           </Grid>
         </DialogContent>
         <DialogActions>
