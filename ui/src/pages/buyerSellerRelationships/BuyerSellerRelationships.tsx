@@ -4,9 +4,7 @@
  */
 import React from "react";
 import { DialogTitle, DialogContent, Dialog, DialogActions,
-  FormControl, InputLabel, Select, MenuItem, Grid, Table,
-  TableHead, TableRow, TableCell, TableBody, TextField,
-  Button, Tooltip } from "@material-ui/core";
+         Grid, TextField, Button } from "@material-ui/core";
 import { useState } from "react";
 import Contracts from "../../components/Contracts/Contracts";
 import { useLedger, useStreamQuery } from "@daml/react";
