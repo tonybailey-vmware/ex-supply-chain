@@ -29,11 +29,13 @@ const Sidebar = ({ location } : RouteComponentProps) => {
     ['quoteRequests', ["Buyer", "Seller"]],
     ['buyerSellerRelationships', ["Buyer"]],
     ['quoteRequestsAccepted', ["Buyer", "Seller"]],
+    ['supplyInvitations', ["Seller", "Supplier"]],
   ]);
   var panelNames = new Map([
     ['buyerSellerRelationships', "Buyer Seller Relationships"],
     ['quoteRequests', "Quote Requests"],
     ['quoteRequestsAccepted', "Accepted Quote Requests"],
+    ['supplyInvitations', "Supply Invitations"],
   ]);
 
   function SidebarItem(props: { identifier: string }) {
@@ -59,6 +61,7 @@ const Sidebar = ({ location } : RouteComponentProps) => {
         <SidebarItem identifier="buyerSellerRelationships" />
         <SidebarItem identifier="quoteRequests" />
         <SidebarItem identifier="quoteRequestsAccepted" />
+        <SidebarItem identifier="supplyInvitations" />
       </List>
     </Drawer>
   );

@@ -13,6 +13,7 @@ import { wsBaseUrl, httpBaseUrl } from "../../config";
 import useStyles from "./styles";
 import QuoteRequests from "../../pages/quoteRequests/QuoteRequests";
 import QuoteRequestsAccepted from "../../pages/quoteRequestsAccepted/QuoteRequestsAccepted";
+import SupplyInvitations from "../../pages/supplyInvitations/SupplyInvitations";
 
 const Layout = () => {
   const classes = useStyles();
@@ -33,6 +34,7 @@ const Layout = () => {
                   <Route path="/app/buyerSellerRelationships" component={BuyerSellerRelationships} />
                   <Route path="/app/quoteRequests" component={QuoteRequests} />
                   <Route path="/app/quoteRequestsAccepted" component={QuoteRequestsAccepted} />
+                  <Route path="/app/supplyInvitations" component={SupplyInvitations} />
                 </Switch>
               </div>
             </>

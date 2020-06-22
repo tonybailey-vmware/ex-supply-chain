@@ -5,39 +5,36 @@
 import React from "react";
 import Contracts from "../../components/Contracts/Contracts";
 import { useStreamQuery, useParty, useLedger } from "@daml/react";
-import { QuoteRequest, QuoteRequestAccepted }
+import { QuoteRequestSupplyInvitation }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/QuoteRequest";
 import { useState } from "react";
 import { CreateEvent } from "@daml/ledger";
 import { OrderedProductList } from "../quoteRequests/OrderedProductList";
-import { SortedPartyNames } from "../login/Login";
 
-export default function QuoteRequestsAccepted() {
-
-  const parties = new SortedPartyNames().getParties();
+export default function SupplyInvitations() {
 
   const party = useParty();
   const ledger = useLedger();
   const roles =
-    useStreamQuery(QuoteRequestAccepted);
+    useStreamQuery(QuoteRequestSupplyInvitation);
+
+  function acceptSupplyInvitation(
+            createEvent : CreateEvent<QuoteRequestSupplyInvitation>,
+            _unused : any) {
+    ledger.exercise(
+      QuoteRequestSupplyInvitation.QuoteRequestSupplyInvitation_Accept,
+      createEvent.contractId,
+      { });
+  };
 
   const [isDialogOpen, setDialogOpen] = useState(false);
-  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<QuoteRequestAccepted> | undefined);
+  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<QuoteRequestSupplyInvitation> | undefined);
 
   function showOrderedProductListDialog(
-            createEvent : CreateEvent<QuoteRequestAccepted>,
+            createEvent : CreateEvent<QuoteRequestSupplyInvitation>,
             _unused : any) {
     setDialogOpen(true);
     setCreateEvent(createEvent);
-  };
-
-  function sendToSupplier(
-            createEvent : CreateEvent<QuoteRequestAccepted>,
-            supplier : string) {
-    ledger.exercise(
-      QuoteRequestAccepted.QuoteRequestAccepted_SendToSupplier,
-      createEvent.contractId,
-      { supplier: supplier });
   };
 
   return (
@@ -47,9 +44,11 @@ export default function QuoteRequestsAccepted() {
       <Contracts
         contracts={roles.contracts}
         columns={[
+          { name: "Workflow ID", path: "payload.workflowId" },
           { name: "Buyer", path: "payload.buyer" },
           { name: "Buyer Address", path: "payload.buyerAddress" },
           { name: "Seller", path: "payload.seller" },
+          { name: "Supplier", path: "payload.supplier" },
         ]}
         actions={[
           {
@@ -61,12 +60,12 @@ export default function QuoteRequestsAccepted() {
             values: [],
           },
           {
-            name: "Send to supplier",
-            handle: sendToSupplier,
-            paramName: "Supplier",
-            condition: (c) => c.payload.seller === party,
-            items: parties.map(p => p.displayName),
-            values: parties.map(p => p.identifier),
+            name: "Accept",
+            handle: acceptSupplyInvitation,
+            paramName: "",
+            condition: (c) => c.payload.supplier === party,
+            items: [],
+            values: [],
           },
         ]}
         dialogs={[]}
