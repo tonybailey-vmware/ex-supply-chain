@@ -22,10 +22,10 @@ type SidebarLinkProps = {
 }
 
 const Sidebar = ({ location } : RouteComponentProps) => {
-  var classes = useStyles();
+  const classes = useStyles();
   const party = useParty();
 
-  var whatIsVisibleByWhom = new Map([
+  const whatIsVisibleByWhom = new Map([
     ['quoteRequests', ["Buyer", "Seller"]],
     ['buyerSellerRelationships', ["Buyer"]],
     ['quoteRequestsAccepted', ["Buyer", "Seller"]],
@@ -33,7 +33,7 @@ const Sidebar = ({ location } : RouteComponentProps) => {
     ['supplyRequests', ["Supplier"]],
     ['transportQuoteRequests', ["TransportCompany1", "TransportCompany2", "Warehouse2"]],
   ]);
-  var panelNames = new Map([
+  const panelNames = new Map([
     ['buyerSellerRelationships', "Buyer Seller Relationships"],
     ['quoteRequests', "Quote Requests"],
     ['quoteRequestsAccepted', "Accepted Quote Requests"],
@@ -43,7 +43,7 @@ const Sidebar = ({ location } : RouteComponentProps) => {
   ]);
 
   function SidebarItem(props: { identifier: string }) {
-    var partiesWhoCanSee = whatIsVisibleByWhom.get(props.identifier);
+    const partiesWhoCanSee = whatIsVisibleByWhom.get(props.identifier);
     if (partiesWhoCanSee !== undefined && partiesWhoCanSee.includes(party)) {
       return (
         <SidebarLink
