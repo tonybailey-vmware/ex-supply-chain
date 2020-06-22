@@ -12,6 +12,7 @@ import { useUserState } from "../../context/UserContext";
 import { wsBaseUrl, httpBaseUrl } from "../../config";
 import useStyles from "./styles";
 import QuoteRequests from "../../pages/quoteRequests/QuoteRequests";
+import QuoteRequestsAccepted from "../../pages/quoteRequestsAccepted/QuoteRequestsAccepted";
 
 const Layout = () => {
   const classes = useStyles();
@@ -31,6 +32,7 @@ const Layout = () => {
                 <Switch>
                   <Route path="/app/buyerSellerRelationships" component={BuyerSellerRelationships} />
                   <Route path="/app/quoteRequests" component={QuoteRequests} />
+                  <Route path="/app/quoteRequestsAccepted" component={QuoteRequestsAccepted} />
                 </Switch>
               </div>
             </>

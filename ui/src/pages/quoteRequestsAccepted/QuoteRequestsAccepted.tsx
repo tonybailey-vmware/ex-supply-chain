@@ -5,21 +5,24 @@
 import React from "react";
 import Contracts from "../../components/Contracts/Contracts";
 import { useStreamQuery, useParty, useLedger } from "@daml/react";
-import { QuoteRequest }
+import { QuoteRequest, QuoteRequestAccepted }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/QuoteRequest";
 import { useState } from "react";
 import { CreateEvent } from "@daml/ledger";
-import { OrderedProductList } from "./OrderedProductList";
+import { OrderedProductList } from "../quoteRequests/OrderedProductList";
+import { SortedPartyNames } from "../login/Login";
 
-export default function QuoteRequests() {
+export default function QuoteRequestsAccepted() {
+
+  const parties = new SortedPartyNames().getParties();
 
   const party = useParty();
   const ledger = useLedger();
   const roles =
-    useStreamQuery(QuoteRequest);
+    useStreamQuery(QuoteRequestAccepted);
 
   function acceptQuoteRequest(
-            createEvent : CreateEvent<QuoteRequest>,
+            createEvent : CreateEvent<QuoteRequestAccepted>,
             workflowId : string) {
     ledger.exercise(
       QuoteRequest.QuoteRequest_Accept,
@@ -28,13 +31,22 @@ export default function QuoteRequests() {
   };
 
   const [isDialogOpen, setDialogOpen] = useState(false);
-  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<QuoteRequest> | undefined);
+  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<QuoteRequestAccepted> | undefined);
 
   function showOrderedProductListDialog(
-            createEvent : CreateEvent<QuoteRequest>,
+            createEvent : CreateEvent<QuoteRequestAccepted>,
             _unused : any) {
     setDialogOpen(true);
     setCreateEvent(createEvent);
+  };
+
+  function sendToSupplier(
+            createEvent : CreateEvent<QuoteRequestAccepted>,
+            supplier : string) {
+    ledger.exercise(
+      QuoteRequestAccepted.QuoteRequestAccepted_SendToSupplier,
+      createEvent.contractId,
+      { supplier: supplier });
   };
 
   return (
@@ -58,12 +70,12 @@ export default function QuoteRequests() {
             values: [],
           },
           {
-            name: "Accept",
-            handle: acceptQuoteRequest,
-            paramName: "Workflow Id",
+            name: "Send to supplier",
+            handle: sendToSupplier,
+            paramName: "Supplier",
             condition: (c) => c.payload.seller === party,
-            items: [],
-            values: [],
+            items: parties.map(p => p.displayName),
+            values: parties.map(p => p.identifier),
           },
         ]}
         dialogs={[]}

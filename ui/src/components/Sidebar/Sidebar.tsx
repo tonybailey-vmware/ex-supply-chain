@@ -27,11 +27,13 @@ const Sidebar = ({ location } : RouteComponentProps) => {
 
   var whatIsVisibleByWhom = new Map([
     ['quoteRequests', ["Buyer", "Seller"]],
-    ['buyerSellerRelationships', ["Buyer"]]
+    ['buyerSellerRelationships', ["Buyer"]],
+    ['quoteRequestsAccepted', ["Buyer", "Seller"]],
   ]);
   var panelNames = new Map([
     ['buyerSellerRelationships', "Buyer Seller Relationships"],
-    ['quoteRequests', "Quote Requests"]
+    ['quoteRequests', "Quote Requests"],
+    ['quoteRequestsAccepted', "Accepted Quote Requests"],
   ]);
 
   function SidebarItem(props: { identifier: string }) {
@@ -56,6 +58,7 @@ const Sidebar = ({ location } : RouteComponentProps) => {
       <List style={{ width: "100%" }}>
         <SidebarItem identifier="buyerSellerRelationships" />
         <SidebarItem identifier="quoteRequests" />
+        <SidebarItem identifier="quoteRequestsAccepted" />
       </List>
     </Drawer>
   );
