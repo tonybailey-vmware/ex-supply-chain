@@ -11,6 +11,7 @@ import BuyerSellerRelationships from "../../pages/buyerSellerRelationships/Buyer
 import { useUserState } from "../../context/UserContext";
 import { wsBaseUrl, httpBaseUrl } from "../../config";
 import useStyles from "./styles";
+import QuoteRequests from "../../pages/quoteRequests/QuoteRequests";
 
 const Layout = () => {
   const classes = useStyles();
@@ -29,6 +30,7 @@ const Layout = () => {
                 <div className={classes.fakeToolbar} />
                 <Switch>
                   <Route path="/app/buyerSellerRelationships" component={BuyerSellerRelationships} />
+                  <Route path="/app/quoteRequests" component={QuoteRequests} />
                 </Switch>
               </div>
             </>

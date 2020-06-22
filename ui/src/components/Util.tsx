@@ -26,8 +26,8 @@ export function shorten(text: any): any {
     if (isParty(text)) {
       return addSpacesBetweenWords(getDisplayName(text));
     }
-    if (text.length > 20) {
-      return `${text.substr(0,20)}...`;
+    if (text.length > 40) {
+      return `${text.substr(0,40)}...`;
     }
     return text;
   }
