@@ -12,6 +12,7 @@ import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListIcon from "@material-ui/icons/List";
 import useStyles from "./styles";
+import { useParty } from "@daml/react";
 
 type SidebarLinkProps = {
   path : string
@@ -22,13 +23,39 @@ type SidebarLinkProps = {
 
 const Sidebar = ({ location } : RouteComponentProps) => {
   var classes = useStyles();
+  const party = useParty();
+
+  var whatIsVisibleByWhom = new Map([
+    ['quoteRequests', ["Buyer", "Seller"]],
+    ['buyerSellerRelationships', ["Buyer"]]
+  ]);
+  var panelNames = new Map([
+    ['buyerSellerRelationships', "Buyer Seller Relationships"],
+    ['quoteRequests', "Quote Requests"]
+  ]);
+
+  function SidebarItem(props: { identifier: string }) {
+    var partiesWhoCanSee = whatIsVisibleByWhom.get(props.identifier);
+    if (partiesWhoCanSee !== undefined && partiesWhoCanSee.includes(party)) {
+      return (
+        <SidebarLink
+          key={0}
+          label={panelNames.get(props.identifier) || "unassigned"}
+          path={"/app/" + props.identifier}
+          icon={(<ListIcon />)}
+          location={location}
+        />
+        );
+    }
+    return null;
+  }
 
   return (
     <Drawer open variant="permanent" className={classes.drawer} classes={{ paper: classes.drawer }}>
       <div className={classes.toolbar} />
       <List style={{ width: "100%" }}>
-        <SidebarLink key={0} label="BuyerSellerRelationships" path="/app/buyerSellerRelationships" icon={(<ListIcon />)} location={location} />
-        <SidebarLink key={0} label="QuoteRequests" path="/app/quoteRequests" icon={(<ListIcon />)} location={location} />
+        <SidebarItem identifier="buyerSellerRelationships" />
+        <SidebarItem identifier="quoteRequests" />
       </List>
     </Drawer>
   );
