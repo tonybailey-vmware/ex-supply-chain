@@ -7,7 +7,6 @@ daml 1.2
 module DA.RefApps.SupplyChain.LedgerSetupScript where
 
 import DA.Date
-import DA.Optional
 
 import DA.RefApps.SupplyChain.Relationship
 import DA.RefApps.SupplyChain.Types
@@ -27,12 +26,15 @@ data SetupData = SetupData with
 -- Setup script to prepare the relationships and inventory
 initialize: Script ()
 initialize = do
-  let
-    buyer = fromSome (partyFromText "Buyer")
-    seller = fromSome (partyFromText "Seller")
-    supplier = fromSome (partyFromText "Supplier")
-    warehouse1 = fromSome (partyFromText "Warehouse1")
-    warehouse2 = fromSome (partyFromText "Warehouse2")
+  let allocate x = allocatePartyWithHint x (PartyIdHint x)
+
+  buyer <- allocate "Buyer"
+  seller <- allocate "Seller"
+  supplier <- allocate "Supplier"
+  warehouse1 <- allocate "Warehouse1"
+  warehouse2 <- allocate "Warehouse2"
+  allocate "TransportCompany1"
+  allocate "TransportCompany2"
 
   -- Predefined data
   let

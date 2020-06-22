@@ -14,6 +14,8 @@ import useStyles from "./styles";
 import QuoteRequests from "../../pages/quoteRequests/QuoteRequests";
 import QuoteRequestsAccepted from "../../pages/quoteRequestsAccepted/QuoteRequestsAccepted";
 import SupplyInvitations from "../../pages/supplyInvitations/SupplyInvitations";
+import SupplyRequests from "../../pages/supplyRequests/SupplyRequests";
+import TransportQuoteRequests from "../../pages/transportQuoteRequests/TransportQuoteRequests";
 
 const Layout = () => {
   const classes = useStyles();
@@ -35,6 +37,8 @@ const Layout = () => {
                   <Route path="/app/quoteRequests" component={QuoteRequests} />
                   <Route path="/app/quoteRequestsAccepted" component={QuoteRequestsAccepted} />
                   <Route path="/app/supplyInvitations" component={SupplyInvitations} />
+                  <Route path="/app/supplyRequests" component={SupplyRequests} />
+                  <Route path="/app/transportQuoteRequests" component={TransportQuoteRequests} />
                 </Switch>
               </div>
             </>
