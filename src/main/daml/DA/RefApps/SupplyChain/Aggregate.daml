@@ -14,7 +14,7 @@ import DA.RefApps.SupplyChain.Payment
 import DA.RefApps.SupplyChain.Delivery
 import DA.RefApps.SupplyChain.Quote
 
--- In the process of preparing the quote this template represents the aggregated quote details ready for sent to seller
+-- In the process of preparing the quote this template represents the aggregated quote details ready to be sent to seller
 template AggregatedQuotePending
   with
     workflowId: WorkflowId

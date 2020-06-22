@@ -2,44 +2,44 @@
  * Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState } from "react";
+import React from "react";
 import Contracts from "../../components/Contracts/Contracts";
 import { useStreamQuery, useLedger, useParty } from "@daml/react";
-import { TransportQuoteRequestPending }
-  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/QuoteRequest";
+import { AggregatedQuotePending }
+  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Aggregate";
 import { CreateEvent } from "@daml/ledger";
-import { OrderedProductList } from "../quoteRequests/OrderedProductList";
+// import { OrderedProductList } from "../quoteRequests/OrderedProductList";
 
-export default function TransportQuoteRequestPendings() {
+export default function AggregatedQuotePendings() {
 
   const party = useParty();
   const ledger = useLedger();
   const requests =
-    useStreamQuery(TransportQuoteRequestPending);
+    useStreamQuery(AggregatedQuotePending);
 
-  function chooseTransport(
-            createEvent : CreateEvent<TransportQuoteRequestPending>,
+  function sendToSeller(
+            createEvent : CreateEvent<AggregatedQuotePending>,
             _unused : any) {
     ledger.exercise(
-      TransportQuoteRequestPending.TransportQuoteRequestPending_ChooseTransport,
+      AggregatedQuotePending.AggregatedQuotePending_SendQuoteToSeller,
       createEvent.contractId,
       {});
   };
 
-  const [isDialogOpen, setDialogOpen] = useState(false);
-  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<TransportQuoteRequestPending> | undefined);
+  // const [isDialogOpen, setDialogOpen] = useState(false);
+  // const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<TransportQuoteRequestPending> | undefined);
 
-  function showOrderedProductListDialog(
-            createEvent : CreateEvent<TransportQuoteRequestPending>,
-            _unused : any) {
-    setDialogOpen(true);
-    setCreateEvent(createEvent);
-  };
+  // function showOrderedProductListDialog(
+  //           createEvent : CreateEvent<TransportQuoteRequestPending>,
+  //           _unused : any) {
+  //   setDialogOpen(true);
+  //   setCreateEvent(createEvent);
+  // };
 
   return (
     <>
       <div>
-      <OrderedProductList ledger={ledger} createEvent={createEvent} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} />
+      {/* <OrderedProductList ledger={ledger} createEvent={createEvent} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} /> */}
       <Contracts
         contracts={requests.contracts}
         columns={[
@@ -50,17 +50,17 @@ export default function TransportQuoteRequestPendings() {
           { name: "Supplier", path: "payload.supplier" },
         ]}
         actions={[
+          // {
+          //   name: "Show order",
+          //   handle: showOrderedProductListDialog,
+          //   paramName: "",
+          //   condition: (c) => true,
+          //   items: [],
+          //   values: [],
+          // },
           {
-            name: "Show order",
-            handle: showOrderedProductListDialog,
-            paramName: "",
-            condition: (c) => true,
-            items: [],
-            values: [],
-          },
-          {
-            name: "Choose transport",
-            handle: chooseTransport,
+            name: "Send quote to seller",
+            handle: sendToSeller,
             paramName: "",
             condition: (c) => c.payload.supplier === party,
             items: [],
