@@ -5,7 +5,7 @@
 import React from "react";
 import Contracts from "../../components/Contracts/Contracts";
 import { useStreamQuery, useParty, useLedger } from "@daml/react";
-import { QuoteRequest, QuoteRequestAccepted }
+import { QuoteRequestAccepted }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/QuoteRequest";
 import { useState } from "react";
 import { CreateEvent } from "@daml/ledger";

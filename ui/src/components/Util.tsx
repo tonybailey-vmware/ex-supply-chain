@@ -21,13 +21,13 @@ export function getDisplayName(partyId: string): string {
   return partyId.split("::")[0];
 }
 
-export function shorten(text: any): any {
+export function shorten(text: any, maxLength: number = 40): any {
   if (typeof text === "string") {
     if (isParty(text)) {
       return addSpacesBetweenWords(getDisplayName(text));
     }
-    if (text.length > 40) {
-      return `${text.substr(0,40)}...`;
+    if (text.length > maxLength) {
+      return `${text.substr(0, maxLength)}...`;
     }
     return text;
   }

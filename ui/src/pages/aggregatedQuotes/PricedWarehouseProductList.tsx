@@ -7,7 +7,7 @@ import { PricedWarehouseProduct }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Types";
 import { DialogTitle, DialogContent, Dialog, DialogActions,
          Grid, TextField, Button } from "@material-ui/core";
-import Ledger, { CreateEvent } from "@daml/ledger";
+import Ledger from "@daml/ledger";
 
 export function PricedWarehouseProductList(
     props:

@@ -17,12 +17,12 @@ export function OrderedProductList(
         isDialogOpen: boolean,
         setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
       }) {
-    const fields = props.createEvent === undefined ? [] : props.createEvent.payload.products
+    const fields = props.createEvent ? props.createEvent.payload.products : []
 
     return (
       <Dialog open={props.isDialogOpen} key="quoteReq" onClose={() => ({})} maxWidth={false} fullWidth>
       <DialogTitle>
-        Quote request {props.createEvent !== undefined ? `(Ordered by ${props.createEvent.payload.buyer})` : ""}
+        Quote request {props.createEvent ? `(Ordered by ${props.createEvent.payload.buyer})` : ""}
       </DialogTitle>
       <DialogContent>
         <Grid container spacing={3}>

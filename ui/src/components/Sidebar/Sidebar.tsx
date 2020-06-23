@@ -62,7 +62,7 @@ const Sidebar = ({ location } : RouteComponentProps) => {
 
   function SidebarItem(props: { identifier: string }) {
     const partiesWhoCanSee = whatIsVisibleByWhom.get(props.identifier);
-    if (partiesWhoCanSee !== undefined && partiesWhoCanSee.includes(party)) {
+    if (partiesWhoCanSee && partiesWhoCanSee.includes(party)) {
       return (
         <SidebarLink
           key={0}
