@@ -8,6 +8,7 @@ import { useStreamQuery, useLedger, useParty } from "@daml/react";
 import { AggregatedQuote }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Aggregate";
 import { CreateEvent } from "@daml/ledger";
+import { PricedWarehouseProductList } from "./PricedWarehouseProductList";
 
 export default function AggregatedQuotes() {
 
@@ -39,6 +40,7 @@ export default function AggregatedQuotes() {
   return (
     <>
       <div>
+      <PricedWarehouseProductList ledger={ledger} createEvent={createEvent} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} />
       <Contracts
         contracts={requests.contracts}
         columns={[
