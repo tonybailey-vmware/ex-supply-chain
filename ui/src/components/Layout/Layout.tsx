@@ -18,6 +18,7 @@ import SupplyRequests from "../../pages/supplyRequests/SupplyRequests";
 import TransportQuoteRequests from "../../pages/transportQuoteRequests/TransportQuoteRequests";
 import TransportQuoteRequestPendings from "../../pages/transportQuoteRequestPendings/TransportQuoteRequestPendings";
 import AggregatedQuotePending from "../../pages/aggregatedQuotePendings/AggregatedQuotePendings";
+import AggregatedQuotes from "../../pages/aggregatedQuotes/AggregatedQuotes";
 
 const Layout = () => {
   const classes = useStyles();
@@ -43,6 +44,7 @@ const Layout = () => {
                   <Route path="/app/transportQuoteRequests" component={TransportQuoteRequests} />
                   <Route path="/app/transportQuoteRequestPendings" component={TransportQuoteRequestPendings} />
                   <Route path="/app/aggregatedQuotePendings" component={AggregatedQuotePending} />
+                  <Route path="/app/aggregatedQuotes" component={AggregatedQuotes} />
                 </Switch>
               </div>
             </>

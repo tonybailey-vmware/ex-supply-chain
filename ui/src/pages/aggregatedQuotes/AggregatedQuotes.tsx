@@ -5,32 +5,32 @@
 import React, { useState } from "react";
 import Contracts from "../../components/Contracts/Contracts";
 import { useStreamQuery, useLedger, useParty } from "@daml/react";
-import { TransportQuoteRequestPending }
-  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/QuoteRequest";
+import { AggregatedQuote }
+  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Aggregate";
 import { CreateEvent } from "@daml/ledger";
-import { OrderedProductList } from "../quoteRequests/OrderedProductList";
 
-export default function TransportQuoteRequestPendings() {
+export default function AggregatedQuotes() {
 
   const party = useParty();
   const ledger = useLedger();
   const requests =
-    useStreamQuery(TransportQuoteRequestPending);
+    useStreamQuery(AggregatedQuote);
 
-  function chooseTransport(
-            createEvent : CreateEvent<TransportQuoteRequestPending>,
-            _unused : any) {
+  function addMargin(
+            createEvent : CreateEvent<AggregatedQuote>,
+            margin : any) {
     ledger.exercise(
-      TransportQuoteRequestPending.TransportQuoteRequestPending_ChooseTransport,
+      AggregatedQuote.AggregatedQuote_AddMargin,
       createEvent.contractId,
-      {});
+      { margin: margin });
   };
 
-  const [isDialogOpen, setDialogOpen] = useState(false);
-  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<TransportQuoteRequestPending> | undefined);
 
-  function showOrderedProductListDialog(
-            createEvent : CreateEvent<TransportQuoteRequestPending>,
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [createEvent, setCreateEvent] = useState(undefined as CreateEvent<AggregatedQuote> | undefined);
+
+  function showTransportItemListDialog(
+            createEvent : CreateEvent<AggregatedQuote>,
             _unused : any) {
     setDialogOpen(true);
     setCreateEvent(createEvent);
@@ -39,7 +39,6 @@ export default function TransportQuoteRequestPendings() {
   return (
     <>
       <div>
-      <OrderedProductList ledger={ledger} createEvent={createEvent} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} />
       <Contracts
         contracts={requests.contracts}
         columns={[
@@ -52,17 +51,17 @@ export default function TransportQuoteRequestPendings() {
         actions={[
           {
             name: "Show order",
-            handle: showOrderedProductListDialog,
+            handle: showTransportItemListDialog,
             paramName: "",
             condition: (c) => true,
             items: [],
             values: [],
           },
           {
-            name: "Choose transport",
-            handle: chooseTransport,
-            paramName: "",
-            condition: (c) => c.payload.supplier === party,
+            name: "Add margin",
+            handle: addMargin,
+            paramName: "Margin",
+            condition: (c) => c.payload.seller === party,
             items: [],
             values: [],
           },
