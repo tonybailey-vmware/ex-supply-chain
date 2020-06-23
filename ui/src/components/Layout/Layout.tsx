@@ -19,6 +19,10 @@ import TransportQuoteRequests from "../../pages/transportQuoteRequests/Transport
 import TransportQuoteRequestPendings from "../../pages/transportQuoteRequestPendings/TransportQuoteRequestPendings";
 import AggregatedQuotePending from "../../pages/aggregatedQuotePendings/AggregatedQuotePendings";
 import AggregatedQuotes from "../../pages/aggregatedQuotes/AggregatedQuotes";
+import QuoteForBuyer from "../../pages/quoteForBuyer/QuoteForBuyer";
+import Orders from "../../pages/orders/Orders";
+import DeliveryInstructions from "../../pages/deliveryInstructions/DeliveryInstructions";
+import PickUpRequests from "../../pages/pickupRequests/PickupRequests";
 
 const Layout = () => {
   const classes = useStyles();
@@ -45,6 +49,10 @@ const Layout = () => {
                   <Route path="/app/transportQuoteRequestPendings" component={TransportQuoteRequestPendings} />
                   <Route path="/app/aggregatedQuotePendings" component={AggregatedQuotePending} />
                   <Route path="/app/aggregatedQuotes" component={AggregatedQuotes} />
+                  <Route path="/app/quoteForBuyer" component={QuoteForBuyer} />
+                  <Route path="/app/orders" component={Orders} />
+                  <Route path="/app/deliveryInstructions" component={DeliveryInstructions} />
+                  <Route path="/app/pickUpRequests" component={PickUpRequests} />
                 </Switch>
               </div>
             </>

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React from "react";
-import { AggregatedQuote }
-  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Aggregate";
+import { PricedWarehouseProduct }
+  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Types";
 import { DialogTitle, DialogContent, Dialog, DialogActions,
          Grid, TextField, Button } from "@material-ui/core";
 import Ledger, { CreateEvent } from "@daml/ledger";
@@ -13,11 +13,11 @@ export function PricedWarehouseProductList(
     props:
       {
         ledger: Ledger,
-        createEvent: CreateEvent<AggregatedQuote, unknown, string> | undefined,
+        items: PricedWarehouseProduct[] | undefined,
         isDialogOpen: boolean,
         setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
       }) {
-    const fields = props.createEvent === undefined ? [] : props.createEvent.payload.items
+    const fields = props.items === undefined ? [] : props.items
 
     return (
       <Dialog open={props.isDialogOpen} key="quoteReq" onClose={() => ({})} maxWidth={false} fullWidth>

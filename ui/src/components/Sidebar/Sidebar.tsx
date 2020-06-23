@@ -31,10 +31,14 @@ const Sidebar = ({ location } : RouteComponentProps) => {
     ['quoteRequestsAccepted', ["Buyer", "Seller"]],
     ['supplyInvitations', ["Seller", "Supplier"]],
     ['supplyRequests', ["Supplier"]],
-    ['transportQuoteRequests', ["TransportCompany1", "TransportCompany2", "Warehouse2"]],
+    ['transportQuoteRequests', ["TransportCompany1", "TransportCompany2"]],
     ['transportQuoteRequestPendings', ["Supplier"]],
     ['aggregatedQuotePendings', ["Supplier"]],
     ['aggregatedQuotes', ["Seller"]],
+    ['quoteForBuyer', ["Buyer", "Seller"]],
+    ['orders', ["Buyer", "Seller"]],
+    ['deliveryInstructions', ["TransportCompany1", "TransportCompany2"]],
+    ['pickupRequests', ["Warehouse1", "Warehouse2"]],
   ]);
   const panelNames = new Map([
     ['buyerSellerRelationships', "Buyer Seller Relationships"],
@@ -46,6 +50,10 @@ const Sidebar = ({ location } : RouteComponentProps) => {
     ['transportQuoteRequestPendings', "Pending Transport Quote Requests"],
     ['aggregatedQuotePendings', "Pending aggregated quotes"],
     ['aggregatedQuotes', "Aggregated quotes"],
+    ['quoteForBuyer', "Quotes"],
+    ['orders', "Orders"],
+    ['deliveryInstructions', "Delivery Instructions"],
+    ['pickupRequests', "Pickup requests"],
   ]);
 
   function SidebarItem(props: { identifier: string }) {
@@ -77,6 +85,10 @@ const Sidebar = ({ location } : RouteComponentProps) => {
         <SidebarItem identifier="transportQuoteRequestPendings" />
         <SidebarItem identifier="aggregatedQuotePendings" />
         <SidebarItem identifier="aggregatedQuotes" />
+        <SidebarItem identifier="quoteForBuyer" />
+        <SidebarItem identifier="orders" />
+        <SidebarItem identifier="deliveryInstructions" />
+        <SidebarItem identifier="pickupRequests" />
       </List>
     </Drawer>
   );

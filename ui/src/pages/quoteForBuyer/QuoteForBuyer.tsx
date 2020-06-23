@@ -2,38 +2,38 @@
  * Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState } from "react";
+import React from "react";
 import Contracts from "../../components/Contracts/Contracts";
-import { useStreamQuery, useLedger, useParty } from "@daml/react";
+import { useStreamQuery, useParty, useLedger } from "@daml/react";
 import { PricedWarehouseProduct }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Types";
-import { AggregatedQuote }
-  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Aggregate";
+import { QuoteForBuyer }
+  from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Quote";
+import { useState } from "react";
 import { CreateEvent } from "@daml/ledger";
-import { PricedWarehouseProductList } from "./PricedWarehouseProductList";
+import { PricedWarehouseProductList } from "../aggregatedQuotes/PricedWarehouseProductList";
 
-export default function AggregatedQuotes() {
+export default function QuoteForBuyerView() {
 
   const party = useParty();
   const ledger = useLedger();
-  const requests =
-    useStreamQuery(AggregatedQuote);
+  const roles =
+    useStreamQuery(QuoteForBuyer);
 
-  function addMargin(
-            createEvent : CreateEvent<AggregatedQuote>,
-            margin : any) {
+  function acceptQuoteForBuyer(
+            createEvent : CreateEvent<QuoteForBuyer>,
+            _unused : any) {
     ledger.exercise(
-      AggregatedQuote.AggregatedQuote_AddMargin,
+      QuoteForBuyer.QuoteForBuyer_Accept,
       createEvent.contractId,
-      { margin: margin });
+      { });
   };
-
 
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [items, setItems] = useState(undefined as PricedWarehouseProduct[] | undefined);
 
-  function showTransportItemListDialog(
-            createEvent : CreateEvent<AggregatedQuote>,
+  function showOrderedProductListDialog(
+            createEvent : CreateEvent<QuoteForBuyer>,
             _unused : any) {
     setDialogOpen(true);
     setItems(createEvent.payload.items);
@@ -44,28 +44,27 @@ export default function AggregatedQuotes() {
       <div>
       <PricedWarehouseProductList ledger={ledger} items={items} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} />
       <Contracts
-        contracts={requests.contracts}
+        contracts={roles.contracts}
         columns={[
           { name: "Workflow ID", path: "payload.workflowId" },
           { name: "Buyer", path: "payload.buyer" },
           { name: "Buyer Address", path: "payload.buyerAddress" },
           { name: "Seller", path: "payload.seller" },
-          { name: "Supplier", path: "payload.supplier" },
         ]}
         actions={[
           {
             name: "Show order",
-            handle: showTransportItemListDialog,
+            handle: showOrderedProductListDialog,
             paramName: "",
             condition: (c) => true,
             items: [],
             values: [],
           },
           {
-            name: "Add margin",
-            handle: addMargin,
-            paramName: "Margin",
-            condition: (c) => c.payload.seller === party,
+            name: "Accept",
+            handle: acceptQuoteForBuyer,
+            paramName: "",
+            condition: (c) => c.payload.buyer === party,
             items: [],
             values: [],
           },
