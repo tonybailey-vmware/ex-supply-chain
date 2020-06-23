@@ -7,6 +7,7 @@ import { DialogTitle, DialogContent, Dialog, DialogActions,
          FormControl, InputLabel, Select, MenuItem, Grid, Table,
          TableHead, TableRow, TableCell, TableBody, TextField,
          Button, Tooltip } from "@material-ui/core";
+import Autocomplete from '@material-ui/lab/Autocomplete';
 import useStyles from "./styles";
 import { CreateEvent } from "@daml/ledger";
 import { shorten } from "../../components/Util";
@@ -21,9 +22,10 @@ type ColumnAction = {
 }
 
 interface CommonFieldSpec { "kind": "date" | "text" | "number" }
+interface TextListSpec { "kind": "textlist", "items": string[], values: string[] }
 interface MenuFieldSpec { "kind": "menu", "items": string[], values: string[] }
 
-type DialogFieldType = CommonFieldSpec | MenuFieldSpec
+type DialogFieldType = CommonFieldSpec | MenuFieldSpec | TextListSpec
 
 type DialogFieldSpec = {
   name : string
@@ -55,6 +57,9 @@ export const date: CommonFieldSpec = { "kind": "date" }
 export const number: CommonFieldSpec = { "kind": "number" }
 export function menu(items: string[], values: string[] = []): MenuFieldSpec {
   return { "kind": "menu", "items": items, "values": values }
+}
+export function textlist(items: string[], values: string[] = []): TextListSpec {
+  return { "kind": "textlist", "items": items, "values": values }
 }
 export function field(name: string, fieldType: DialogFieldType): DialogFieldSpec {
   return { name, fieldType }
@@ -148,7 +153,27 @@ export function RenderDialog({ dialog, stateKey, performDialogAction} : RenderDi
             }
           </Select>
           </FormControl>
-        : <TextField
+        : ((spec.fieldType.kind === "textlist")
+          ?
+          <Autocomplete
+            multiple
+            id="tags-standard"
+            options={spec.fieldType.items.map((item, i) => ({ item: item, value: (spec.fieldType as any).values[i]}) )}
+            getOptionLabel={(option: any) => option.item}
+            getOptionSelected={(option, value) => option.item === value.item}
+            defaultValue={[]}
+            renderInput={(params: any) => (
+              <TextField
+                {...params}
+                variant="standard"
+                label={spec.name}
+                placeholder={spec.name}
+              />
+            )}
+            onChange={(event, value) => setDialogState(name, spec["name"], value)}
+          />
+          :
+          <TextField
             required
             autoFocus
             fullWidth={true}
@@ -156,7 +181,7 @@ export function RenderDialog({ dialog, stateKey, performDialogAction} : RenderDi
             label={spec.name}
             type={spec.fieldType.kind}
             onChange={(event) => setDialogState(name, spec["name"], event.target.value)}
-            />}
+            />)}
       </Grid>
       )}
       </>

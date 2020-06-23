@@ -11,6 +11,20 @@ import BuyerSellerRelationships from "../../pages/buyerSellerRelationships/Buyer
 import { useUserState } from "../../context/UserContext";
 import { wsBaseUrl, httpBaseUrl } from "../../config";
 import useStyles from "./styles";
+import QuoteRequests from "../../pages/quoteRequests/QuoteRequests";
+import QuoteRequestsAccepted from "../../pages/quoteRequestsAccepted/QuoteRequestsAccepted";
+import SupplyInvitations from "../../pages/supplyInvitations/SupplyInvitations";
+import SupplyRequests from "../../pages/supplyRequests/SupplyRequests";
+import TransportQuoteRequests from "../../pages/transportQuoteRequests/TransportQuoteRequests";
+import TransportQuoteRequestPendings from "../../pages/transportQuoteRequestPendings/TransportQuoteRequestPendings";
+import AggregatedQuotePending from "../../pages/aggregatedQuotePendings/AggregatedQuotePendings";
+import AggregatedQuotes from "../../pages/aggregatedQuotes/AggregatedQuotes";
+import QuoteForBuyer from "../../pages/quoteForBuyer/QuoteForBuyer";
+import Orders from "../../pages/orders/Orders";
+import DeliveryInstructions from "../../pages/deliveryInstructions/DeliveryInstructions";
+import PickUpRequests from "../../pages/pickupRequests/PickupRequests";
+import TransportPendings from "../../pages/transportPendings/TransportPendings";
+import Deliveries from "../../pages/deliveries/Deliveries";
 
 const Layout = () => {
   const classes = useStyles();
@@ -29,6 +43,20 @@ const Layout = () => {
                 <div className={classes.fakeToolbar} />
                 <Switch>
                   <Route path="/app/buyerSellerRelationships" component={BuyerSellerRelationships} />
+                  <Route path="/app/quoteRequests" component={QuoteRequests} />
+                  <Route path="/app/quoteRequestsAccepted" component={QuoteRequestsAccepted} />
+                  <Route path="/app/supplyInvitations" component={SupplyInvitations} />
+                  <Route path="/app/supplyRequests" component={SupplyRequests} />
+                  <Route path="/app/transportQuoteRequests" component={TransportQuoteRequests} />
+                  <Route path="/app/transportQuoteRequestPendings" component={TransportQuoteRequestPendings} />
+                  <Route path="/app/aggregatedQuotePendings" component={AggregatedQuotePending} />
+                  <Route path="/app/aggregatedQuotes" component={AggregatedQuotes} />
+                  <Route path="/app/quoteForBuyer" component={QuoteForBuyer} />
+                  <Route path="/app/orders" component={Orders} />
+                  <Route path="/app/deliveryInstructions" component={DeliveryInstructions} />
+                  <Route path="/app/pickUpRequests" component={PickUpRequests} />
+                  <Route path="/app/transportPendings" component={TransportPendings} />
+                  <Route path="/app/deliveries" component={Deliveries} />
                 </Switch>
               </div>
             </>
