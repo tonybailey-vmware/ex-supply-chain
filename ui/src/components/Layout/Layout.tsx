@@ -23,6 +23,8 @@ import QuoteForBuyer from "../../pages/quoteForBuyer/QuoteForBuyer";
 import Orders from "../../pages/orders/Orders";
 import DeliveryInstructions from "../../pages/deliveryInstructions/DeliveryInstructions";
 import PickUpRequests from "../../pages/pickupRequests/PickupRequests";
+import TransportPendings from "../../pages/transportPendings/TransportPendings";
+import Deliveries from "../../pages/deliveries/Deliveries";
 
 const Layout = () => {
   const classes = useStyles();
@@ -53,6 +55,8 @@ const Layout = () => {
                   <Route path="/app/orders" component={Orders} />
                   <Route path="/app/deliveryInstructions" component={DeliveryInstructions} />
                   <Route path="/app/pickUpRequests" component={PickUpRequests} />
+                  <Route path="/app/transportPendings" component={TransportPendings} />
+                  <Route path="/app/deliveries" component={Deliveries} />
                 </Switch>
               </div>
             </>
