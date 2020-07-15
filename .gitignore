@@ -4,3 +4,8 @@ target
 *.iml
 .daml
 node_modules
+.classpath
+.project
+.settings/
+.vscode/
+
