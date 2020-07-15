@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Supply Chain application demonstrates a generic example between a Buyer, Seller, Supplier, two Warehouses, and two independent Transport Companies. The process includes: 
+The Supply Chain application demonstrates a generic example between a Buyer, Seller, Supplier, two Warehouses, and two independent Transport Companies. The process includes:
 * Creating a quote request from Buyer to Seller for a given product
 * Supplier collecting quotes for product and transportation from the Warehouses and Transport Companies
 * Aggregating delivery details with price, adding margin, and sending a quote to Buyer
@@ -109,7 +109,7 @@ _**Note:** This demo is designed to show successful conclusion of the supply cha
   <tr>
    <td>Transport Company
    </td>
-   <td>Transport Company is in possession of goods during transportation. It notifies relevant participants of any changes in the status of the delivery. 
+   <td>Transport Company is in possession of goods during transportation. It notifies relevant participants of any changes in the status of the delivery.
    </td>
   </tr>
 </table>
@@ -120,7 +120,7 @@ The Supply Chain application includes the following steps:
 
 1. **Market Setup:** The application starts with an automated market setup process. Participants and their roles are created, and relationships are set up.
 
-2. **Quote Request:** Buyer requests a trade quote from Seller for the price and delivery date for a quantity of goods. Seller reviews the quote request and starts the pricing and delivery collection process. 
+2. **Quote Request:** Buyer requests a trade quote from Seller for the price and delivery date for a quantity of goods. Seller reviews the quote request and starts the pricing and delivery collection process.
 
     Supplier receives notification of the new trade quote request from Seller.
 
