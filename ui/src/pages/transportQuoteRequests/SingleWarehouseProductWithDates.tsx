@@ -8,6 +8,7 @@ import { WarehouseProductWithDates }
 import { DialogTitle, DialogContent, Dialog, DialogActions,
          Grid, TextField, Button } from "@material-ui/core";
 import Ledger from "@daml/ledger";
+import { warehouseProductCells } from "../../components/Contracts/warehouseProductCells";
 
 export function SingleWarehouseProductWithDates(
     props:
@@ -27,7 +28,7 @@ export function SingleWarehouseProductWithDates(
         <Grid container spacing={3}>
           { props.item ?
             (
-              <Grid container item spacing={3} xs={12}>
+              <Grid container item spacing={3}>
                 <Grid item xs>
                 <TextField
                   required
@@ -54,62 +55,7 @@ export function SingleWarehouseProductWithDates(
                   fullWidth
                 />
                 </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"productName"}
-                  type="string"
-                  name="productName"
-                  label="Product name"
-                  value={props.item.warehouseProduct.productName}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"quantity"}
-                  type="string"
-                  name="quantity"
-                  label="Quantity"
-                  value={props.item.warehouseProduct.quantity}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"warehouse"}
-                  type="string"
-                  name="warehouse"
-                  label="Warehouse"
-                  value={props.item.warehouseProduct.warehouse}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"warehouseAddress"}
-                  type="string"
-                  name="warehouseAddress"
-                  label="Warehouse address"
-                  value={props.item.warehouseProduct.warehouseAddress}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
+                { warehouseProductCells(props.item.warehouseProduct) }
               </Grid>
             )
             : <Grid/>

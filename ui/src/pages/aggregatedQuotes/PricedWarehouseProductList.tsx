@@ -8,6 +8,7 @@ import { PricedWarehouseProduct }
 import { DialogTitle, DialogContent, Dialog, DialogActions,
          Grid, TextField, Button } from "@material-ui/core";
 import Ledger from "@daml/ledger";
+import { warehouseProductCells } from "../../components/Contracts/warehouseProductCells";
 
 export function PricedWarehouseProductList(
     props:
@@ -69,62 +70,7 @@ export function PricedWarehouseProductList(
                   fullWidth
                 />
                 </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"productName" + i}
-                  type="string"
-                  name="productName"
-                  label="Product name"
-                  value={field.warehouseProduct.productName}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"quantity" + i}
-                  type="string"
-                  name="quantity"
-                  label="Quantity"
-                  value={field.warehouseProduct.quantity}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"warehouse" + i}
-                  type="string"
-                  name="warehouse"
-                  label="Warehouse"
-                  value={field.warehouseProduct.warehouse}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
-                <Grid item xs>
-                <TextField
-                  required
-                  autoFocus
-                  key={"warehouseAddress" + i}
-                  type="string"
-                  name="warehouseAddress"
-                  label="Warehouse address"
-                  value={field.warehouseProduct.warehouseAddress}
-                  disabled={true}
-                  InputLabelProps={{ shrink: true }}
-                  fullWidth
-                />
-                </Grid>
+                { warehouseProductCells(field.warehouseProduct, i) }
               </Grid>);
           }) }
         </Grid>
