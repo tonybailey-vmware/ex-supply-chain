@@ -32,7 +32,7 @@ export default function TransportQuoteRequests() {
             createEvent : CreateEvent<TransportQuoteRequest>,
             _unused : any) {
     setDialogOpen(true);
-    setItem(createEvent.payload.item); // TODO refactor, use without array
+    setItem(createEvent.payload.item);
   };
 
 
