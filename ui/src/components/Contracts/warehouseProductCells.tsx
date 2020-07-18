@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import React from "react";
 import { WarehouseProduct } from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Types";
 import { Grid, TextField } from "@material-ui/core";
