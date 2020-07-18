@@ -9,7 +9,7 @@ import { TransportQuoteRequest }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/QuoteRequest";
 import { CreateEvent } from "@daml/ledger";
 import { WarehouseProductWithDates } from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Types";
-import { WarehouseProductWithDatesList } from "./WarehouseProductWithDatesList";
+import { SingleWarehouseProductWithDates } from "./SingleWarehouseProductWithDates";
 export default function TransportQuoteRequests() {
 
   const requests = useStreamQuery(TransportQuoteRequest);
@@ -26,20 +26,20 @@ export default function TransportQuoteRequests() {
   };
 
   const [isDialogOpen, setDialogOpen] = useState(false);
-  const [items, setItems] = useState(undefined as WarehouseProductWithDates[] | undefined);
+  const [item, setItem] = useState(undefined as WarehouseProductWithDates | undefined);
 
   function showItem(
             createEvent : CreateEvent<TransportQuoteRequest>,
             _unused : any) {
     setDialogOpen(true);
-    setItems([createEvent.payload.item]); // TODO refactor, use without array
+    setItem(createEvent.payload.item); // TODO refactor, use without array
   };
 
 
   return (
     <>
       <div>
-      <WarehouseProductWithDatesList ledger={ledger} items={items} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} />
+      <SingleWarehouseProductWithDates ledger={ledger} item={item} isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen} />
       <Contracts
         contracts={requests.contracts}
         columns={[

@@ -9,15 +9,14 @@ import { DialogTitle, DialogContent, Dialog, DialogActions,
          Grid, TextField, Button } from "@material-ui/core";
 import Ledger from "@daml/ledger";
 
-export function WarehouseProductWithDatesList(
+export function SingleWarehouseProductWithDates(
     props:
       {
         ledger: Ledger,
-        items: WarehouseProductWithDates[] | undefined,
+        item: WarehouseProductWithDates | undefined,
         isDialogOpen: boolean,
         setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
       }) {
-    const fields = props.items === undefined ? [] : props.items
 
     return (
       <Dialog open={props.isDialogOpen} key="transportQuotReqItem" onClose={() => ({})} maxWidth={false} fullWidth>
@@ -26,18 +25,18 @@ export function WarehouseProductWithDatesList(
       </DialogTitle>
       <DialogContent>
         <Grid container spacing={3}>
-          { fields.map((field, i) => {
-            return (
+          { props.item ?
+            (
               <Grid container item spacing={3} xs={12}>
                 <Grid item xs>
                 <TextField
                   required
                   autoFocus
-                  key={"deliveryFrom" + i}
+                  key={"deliveryFrom"}
                   type="date"
                   name="deliveryFrom"
                   label="Delivery From"
-                  value={field.deliveryFrom}
+                  value={props.item.deliveryFrom}
                   disabled={true}
                   fullWidth
                 />
@@ -46,11 +45,11 @@ export function WarehouseProductWithDatesList(
                 <TextField
                   required
                   autoFocus
-                  key={"deliveryTo" + i}
+                  key={"deliveryTo"}
                   type="date"
                   name="deliveryTo"
                   label="Delivery To"
-                  value={field.deliveryTo}
+                  value={props.item.deliveryTo}
                   disabled={true}
                   fullWidth
                 />
@@ -59,11 +58,11 @@ export function WarehouseProductWithDatesList(
                 <TextField
                   required
                   autoFocus
-                  key={"productName" + i}
+                  key={"productName"}
                   type="string"
                   name="productName"
                   label="Product name"
-                  value={field.warehouseProduct.productName}
+                  value={props.item.warehouseProduct.productName}
                   disabled={true}
                   InputLabelProps={{ shrink: true }}
                   fullWidth
@@ -73,11 +72,11 @@ export function WarehouseProductWithDatesList(
                 <TextField
                   required
                   autoFocus
-                  key={"quantity" + i}
+                  key={"quantity"}
                   type="string"
                   name="quantity"
                   label="Quantity"
-                  value={field.warehouseProduct.quantity}
+                  value={props.item.warehouseProduct.quantity}
                   disabled={true}
                   InputLabelProps={{ shrink: true }}
                   fullWidth
@@ -87,11 +86,11 @@ export function WarehouseProductWithDatesList(
                 <TextField
                   required
                   autoFocus
-                  key={"warehouse" + i}
+                  key={"warehouse"}
                   type="string"
                   name="warehouse"
                   label="Warehouse"
-                  value={field.warehouseProduct.warehouse}
+                  value={props.item.warehouseProduct.warehouse}
                   disabled={true}
                   InputLabelProps={{ shrink: true }}
                   fullWidth
@@ -101,18 +100,20 @@ export function WarehouseProductWithDatesList(
                 <TextField
                   required
                   autoFocus
-                  key={"warehouseAddress" + i}
+                  key={"warehouseAddress"}
                   type="string"
                   name="warehouseAddress"
                   label="Warehouse address"
-                  value={field.warehouseProduct.warehouseAddress}
+                  value={props.item.warehouseProduct.warehouseAddress}
                   disabled={true}
                   InputLabelProps={{ shrink: true }}
                   fullWidth
                 />
                 </Grid>
-              </Grid>);
-          }) }
+              </Grid>
+            )
+            : <Grid/>
+          }
         </Grid>
       </DialogContent>
       <DialogActions>
