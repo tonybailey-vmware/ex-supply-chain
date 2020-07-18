@@ -192,7 +192,6 @@ workflows:
             branches:
               only:
                 - master
-                - ERA-847-ui # TODO remove after merge
   build_and_release:
     jobs:
       - daml_test:
