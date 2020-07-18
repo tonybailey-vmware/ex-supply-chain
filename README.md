@@ -160,58 +160,55 @@ During Navigator startup, the basic buyer-seller relationship and other referenc
 To request a quote:
 
 1. Log in as Buyer.
-2. Choose the **Seller Relationships** tab.
-3. Click on the relationship contract.
-4. Select the **BuyerSellerRelationship_SendQuoteRequest** choice.
-5. Click on **Add new element**
-6. Fill in the parameters:
+1. Choose the **Buyer Seller Relationships** tab.
+1. Select the relationship contract.
+1. Click on the **Send Quote Request** choice.
+1. Click **Add**.
+1. Fill in the parameters:
     * productName: the name of the ordered product (_must match an existing inventory item_, see them on the Inventory page logged in as Supplier)
     * quantity: the ordered quantity
     * deliveryFrom: the start of the acceptable delivery period
     * deliveryTo: the end of the acceptable delivery period
-7. More products can be added by clicking on **Add new element**
-8. Choose **Submit**.
+1. More products can be added by clicking on **Add**.
+1. Choose **Okay**.
 
 #### Accepting the Quote Request
 
 1. Log in as Seller.
-2. Choose the **Quote Requests** tab.
-3. Click on the contract.
-4. Select the **QuoteRequest_Accept** choice.
-5. Fill in the parameter:
+1. Choose the **Quote Requests** tab.
+1. Select the contract.
+1. Fill in the parameter of the choice **Accept**:
     * workflowId: unique identifier of the order workflow
-6. Choose **Submit**.
+1. Click **Accept**.
 
 #### Sending the Request to the Supplier
 
 1. Log in as Seller.
-2. Choose the **Accepted Quote Request** tab.
-3. Click on the contract.
-4. Select the **QuoteRequestAccepted_SendToSupplier** choice.
-5. Fill in the parameter:
+1. Choose the **Accepted Quote Request** tab.
+1. Select the contract.
+1. Fill in the parameter of the choice **Send To Supplier**:
     * supplier: the Supplier party
-6. Choose **Submit**.
+1. Click **Send To Supplier**.
 
 #### Accepting the Supply Invitation
 
 1. Log in as Supplier.
-2. Choose the **Supply Invitation** tab.
-3. Click on the contract.
-4. Select the **QuoteRequestSupplyInvitation_Accept** choice.
-5. Choose **Submit**.
+1. Choose the **Supply Invitations** tab.
+1. Select the contract.
+1. Click on the **Accept** choice.
 
 ### Preparing the Supply
 
 #### Starting Price Collection
 
 1. Log in as Supplier.
-2. Choose the **Supply Request** tab.
-3. Click on the contract.
-4. Select the **SupplyRequest_StartPriceCollection** choice.
-5. Fill in the parameters:
+1. Choose the **Supply Request** tab.
+1. Select the contract.
+1. Click **Start Price Collection**.
+1. Fill in the parameters:
     * warehouses: list of Warehouse parties from which to collect the products
     * transportCompanies: list of Transport Companies from whom to request transport quotes
-6. Choose **Submit**.
+1. Choose **Okay**.
 
 Note that Supplier can see the available quantity of goods in each warehouse, as they are owned by Supplier.
 
