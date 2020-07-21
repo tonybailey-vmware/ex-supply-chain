@@ -50,13 +50,13 @@ const Sidebar = ({ location } : RouteComponentProps) => {
     ['supplyRequests', "Supply Requests"],
     ['transportQuoteRequests', "Transport Quote Requests"],
     ['transportQuoteRequestPendings', "Pending Transport Quote Requests"],
-    ['aggregatedQuotePendings', "Pending aggregated quotes"],
-    ['aggregatedQuotes', "Aggregated quotes"],
+    ['aggregatedQuotePendings', "Pending Aggregated Quotes"],
+    ['aggregatedQuotes', "Aggregated Quotes"],
     ['quoteForBuyer', "Quotes"],
     ['orders', "Orders"],
     ['deliveryInstructions', "Delivery Instructions"],
-    ['pickupRequests', "Pickup requests"],
-    ['transportPendings', "Pending transport"],
+    ['pickupRequests', "Pickup Requests"],
+    ['transportPendings', "Pending Transport"],
     ['deliveries', "Deliveries"],
   ]);
 
