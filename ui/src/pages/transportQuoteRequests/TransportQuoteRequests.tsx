@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import React, { useState } from "react";
-import Contracts from "../../components/Contracts/Contracts";
+import Contracts, { number, field, date } from "../../components/Contracts/Contracts";
 import { useStreamQuery, useLedger } from "@daml/react";
 import { TransportQuoteRequest }
   from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/QuoteRequest";
@@ -18,11 +18,12 @@ export default function TransportQuoteRequests() {
 
   function accept(
             createEvent : CreateEvent<TransportQuoteRequest>,
-            _unused : any) {
+            parameters : any) {
     ledger.exercise(
       TransportQuoteRequest.TransportQuoteRequest_Accept,
       createEvent.contractId,
-      { quoteItem : { transportableQuantity : "", price : "", pickUpDate : "", deliveryDate : "" },  });
+      { quoteItem : parameters,
+    });
   };
 
   const [isDialogOpen, setDialogOpen] = useState(false);
@@ -58,16 +59,19 @@ export default function TransportQuoteRequests() {
             items: [],
             values: [],
           },
+        ]}
+        dialogs={[
           {
             name: "Accept",
-            handle: accept,
-            paramName: "",
-            condition: (c) => true,
-            items: [],
-            values: [],
+            dialogFields: [
+              field("transportableQuantity", number),
+              field("price", number),
+              field("pickUpDate", date),
+              field("deliveryDate", date),
+            ],
+            action: accept,
           },
         ]}
-        dialogs={[]}
       />
       </div>
     </>

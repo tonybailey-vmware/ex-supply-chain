@@ -215,15 +215,15 @@ Note that Supplier can see the available quantity of goods in each warehouse, as
 #### Sending Transport Quotes
 
 1. Log in as any Transport Company (TransportCompany1, TransportCompany2).
-2. Choose the **Transport Quote Request** tab.
-3. Click on the contract.
-4. Select the **TransportQuoteRequest_Accept** choice.
-5. Fill in the parameters:
+1. Choose the **Transport Quote Request** tab.
+1. Select the contract.
+1. Click **Accept**.
+1. Fill in the parameters:
     * transportableQuantity: the quantity this transport company is able to deliver from the given location (Warehouse)
     * price: the total price of transportableQuantity
     * pickUpDate: date of pickup at Warehouse
     * deliveryDate: date of delivery to Buyer
-6. Choose **Submit**.
+1. Choose **Okay**.
 
 #### Choosing the Best Delivery Plan
 
