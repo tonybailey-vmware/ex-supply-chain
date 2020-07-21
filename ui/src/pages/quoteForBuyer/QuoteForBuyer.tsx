@@ -49,6 +49,7 @@ export default function QuoteForBuyerView() {
           { name: "Workflow ID", path: "payload.workflowId" },
           { name: "Buyer", path: "payload.buyer" },
           { name: "Buyer Address", path: "payload.buyerAddress" },
+          { name: "Total Price", path: "payload.totalPrice" },
           { name: "Seller", path: "payload.seller" },
         ]}
         actions={[

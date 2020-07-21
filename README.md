@@ -179,7 +179,7 @@ To request a quote:
 1. Select the contract.
 1. Fill in the parameter of the choice **Accept**:
     * workflowId: unique identifier of the order workflow
-1. Click **Accept**.
+1. Click on **Accept**.
 
 #### Sending the Request to the Supplier
 
@@ -188,14 +188,14 @@ To request a quote:
 1. Select the contract.
 1. Fill in the parameter of the choice **Send To Supplier**:
     * supplier: the Supplier party
-1. Click **Send To Supplier**.
+1. Click on **Send To Supplier**.
 
 #### Accepting the Supply Invitation
 
 1. Log in as Supplier.
 1. Choose the **Supply Invitations** tab.
 1. Select the contract.
-1. Click on the **Accept** choice.
+1. Click on **Accept**.
 
 ### Preparing the Supply
 
@@ -228,30 +228,27 @@ Note that Supplier can see the available quantity of goods in each warehouse, as
 #### Choosing the Best Delivery Plan
 
 1. Log in as Supplier.
-2. Choose the **Pending Quote Request** tab.
-3. Click on the contract.
-4. Select the **TransportQuoteRequestPending_ChooseTransport** choice.
-5. Choose **Submit**.
+1. Choose the **Pending Transport Quote Request** tab.
+1. Select the contract.
+1. Click on **ChooseTransport**.
 
 #### Sending the Aggregated Quote to Seller
 
 1. Log in as Supplier.
-2. Choose the **Aggregated Pending Quote** tab.
-3. Click on the contract.
-4. Select the **AggregatedQuotePending_SendQuoteToSeller** choice.
-5. Choose **Submit**.
+1. Choose the **Pending Aggregated Quote** tab.
+1. Select the contract.
+1. Click **Send To Seller**.
 
 ### Preparing and Sending the Quote
 
 #### Adding Margin
 
 1. Log in as Seller.
-2. Choose the **Aggregated Quote** tab.
-3. Click on the contract.
-4. Select the **AggregatedQuote_AddMargin** choice.
-5. Fill in the parameter:
+1. Choose the **Aggregated Quotes** tab.
+1. Select the contract.
+1. Fill in the parameter of the choice **Add Margin**:
     * margin: a decimal number describing the margin (e.g. `0.1` means 10% margin)
-6. Choose **Submit**.
+1. Click on **Add Margin**.
 
 _Note:_ You cannot click on the contract if you did not start the triggers. In this case you need to start over, and make sure the triggers run.
 
@@ -260,52 +257,46 @@ _Note:_ You cannot click on the contract if you did not start the triggers. In t
 #### Accepting the Quote
 
 1. Log in as Buyer.
-2. Choose the **Received Quote** tab.
-3. Click on the contract.
-4. Select the **QuoteForBuyer_Accept** choice.
-5. Choose **Submit**.
+1. Choose the **Quotes** tab.
+1. Select the contract.
+1. Click on **Accept**.
 
 #### Accepting the Order
 
 1. Log in as Seller.
-2. Choose the **Confirmed Order** tab.
-3. Click on the contract.
-4. Select the **ConfirmedOrder_StartDelivery** choice.
-5. Choose **Submit**.
+1. Choose the **Order** tab.
+1. Select the contract.
+1. Click on the **StartDelivery** choice.
 
 #### Pick Up Products
 
 1. Log in as a Transport Company (TransportCompany1, TransportCompany2).
-2. Choose the **Delivery Instruction** tab.
-3. Click on the contract.
-4. In a real system we could check if it is the pickup date of the delivery instruction, but we don't require this for sake of the demo.
-5. Select the **DeliveryInstruction_PickUp** choice.
-6. Choose **Submit**.
+1. Choose the **Delivery Instruction** tab.
+1. Select the contract.
+1. In a real system we could check if it is the pickup date of the delivery instruction, but we don't require this for sake of the demo.
+1. Click on **PickUp**.
 
 #### Acknowledge Pickup
 
 1. Log in as a Warehouse (Warehouse1, Warehouse2).
-2. Choose the **Pickup Request** tab.
-3. Click on the contract.
-4. Select the **PickUpRequest_Accept** choice.
-5. Choose **Submit**.
+1. Choose the **Pickup Request** tab.
+1. Select the contract.
+1. Click on **Accept**.
 
 #### Start Delivery
 
 1. Log in as a Transport Company (TransportCompany1, TransportCompany2).
-2. Choose the **Pending Transport** tab.
-3. Click on the contract.
-4. Select the **TransportPending_Deliver** choice.
-5. Choose **Submit**.
+1. Choose the **Pending Transport** tab.
+1. Select the contract.
+1. Click on **Deliver**.
 
 #### Acknowledge Delivery
 
 1. Log in as Buyer.
-2. Choose the **Delivery** tab.
-3. Click on the contract.
-4. In a real system we could check if it is the delivery date, but we don't require this for sake of the demo.
-5. Select the **Delivery_Acknowledge** choice.
-6. Choose **Submit**.
+1. Choose the **Delivery** tab.
+1. Select the contract.
+1. In a real system we could check if it is the delivery date, but we don't require this for sake of the demo.
+1. Click on **Acknowledge**.
 
 ### Payment
 
