@@ -310,10 +310,9 @@ _Note:_ You cannot click on the contract if you did not start the triggers. In t
 #### Pay the Warehouses and Transport Companies
 
 1. Log in as Supplier.
-2. Choose the **Supplier Payment** tab.
-3. Click on the contract.
-4. Select the **DeliverySupplierPayment_Pay** choice.
-5. Choose **Submit**.
+1. Choose the **Supplier Payment** tab.
+1. Select the contract.
+1. Click on **Pay**.
 
 
 CONFIDENTIAL © 2019 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
