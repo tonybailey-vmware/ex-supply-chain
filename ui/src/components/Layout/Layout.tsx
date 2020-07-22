@@ -27,6 +27,7 @@ import TransportPendings from "../../pages/transportPendings/TransportPendings";
 import Deliveries from "../../pages/deliveries/Deliveries";
 import DeliveryPayments from "../../pages/deliveryPayments/DeliveryPayments";
 import SupplierPayments from "../../pages/supplierPayments/SupplierPayments";
+import PaymentObligations from "../../pages/paymentObligations/PaymentObligations";
 
 const Layout = () => {
   const classes = useStyles();
@@ -61,6 +62,7 @@ const Layout = () => {
                   <Route path="/app/deliveries" component={Deliveries} />
                   <Route path="/app/deliveryPayments" component={DeliveryPayments} />
                   <Route path="/app/supplierPayments" component={SupplierPayments} />
+                  <Route path="/app/paymentObligations" component={PaymentObligations} />
                 </Switch>
               </div>
             </>
