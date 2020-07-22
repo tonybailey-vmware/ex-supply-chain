@@ -4,7 +4,7 @@
  */
 import React from "react";
 import Contracts from "../../components/Contracts/Contracts";
-import { useStreamQuery, useLedger } from "@daml/react";
+import { useStreamQuery } from "@daml/react";
 import { PaymentObligation } from "@daml.js/supplychain-1.0.0/lib/DA/RefApps/SupplyChain/Payment/module";
 
 export default function PaymentObligations() {
