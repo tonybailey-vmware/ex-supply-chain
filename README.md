@@ -54,7 +54,11 @@ Note: make sure to have at least 8 GBs of memory allocated to Docker.
 ### Stopping the App
 
 #### Stopping Dockerized Run
-1. Stop the Docker containers or triggers by pressing **Ctrl+C**. (Alternatively, you can also stop it by typing `docker-compose down`.)
+1. Stop the Docker containers by pressing **Ctrl+C**.
+1. If you want to cleanup Docker for a fresh restart, type
+    ```
+    docker-compose down --volumes --remove-orphans
+    ```
 
 #### Stopping Standalone Run
 1. Stop the triggers by pressing **Ctrl+C**.

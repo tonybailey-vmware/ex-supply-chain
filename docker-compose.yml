@@ -6,6 +6,14 @@
 version: '2'
 services:
 
+  supplychain-builder:
+    image: digitalasset/supplychain-builder:0.1.0
+    build:
+      context: .
+      dockerfile: builder.Dockerfile
+    volumes:
+      - daml-data:/home/daml/target
+
   supplychain-sandbox:
     image: digitalasset/supplychain-sandbox:0.1.0
     build:
@@ -14,8 +22,6 @@ services:
     ports:
       - "127.0.0.1:6865:6865"
       - "127.0.0.1:7500:7500"
-    volumes:
-      - daml-data:/home/daml/app/.daml
 
   supplychain-triggers:
     image: digitalasset/supplychain-triggers:0.1.0
@@ -23,12 +29,13 @@ services:
       context: .
       dockerfile: triggers.Dockerfile
     depends_on:
+      - "supplychain-builder"
       - "supplychain-sandbox"
     environment:
       - LEDGER_HOST=supplychain-sandbox
       - LEDGER_PORT=6865
     volumes:
-      - daml-data:/home/daml/app/.daml:ro
+      - daml-data:/home/daml/target:ro
 
 volumes:
   daml-data:
