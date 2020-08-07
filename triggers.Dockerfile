@@ -7,15 +7,13 @@ ARG sdk_vsn=1.3.0
 
 FROM digitalasset/daml-sdk:${sdk_vsn}
 
-WORKDIR /home/daml
+# use something else than /home/daml/ because it already has ./.daml/ with DAML installed
+RUN mkdir -p /home/daml/app/
+WORKDIR /home/daml/app
 
-COPY --chown=daml daml.yaml .
-COPY --chown=daml src/main/daml ./src/main/daml
 COPY --chown=daml scripts scripts
-
-RUN daml build -o app.dar
 
 ENV JAVA_TOOL_OPTIONS -Xmx128m
 
-ENTRYPOINT ~/scripts/waitForLedger.sh "$LEDGER_HOST" "$LEDGER_PORT" && \
-           ~/scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" app.dar
+ENTRYPOINT scripts/waitForLedger.sh "$LEDGER_HOST" "$LEDGER_PORT" && \
+           scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" .daml/dist/supplychain-1.0.0.dar
