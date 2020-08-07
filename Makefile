@@ -45,13 +45,9 @@ TS_SRC=$(shell find ui/src/ -name '*.ts*')
 $(UI_BUILD_ARTIFACT): $(UI_INSTALL_ARTIFACT) $(TS_SRC)
 	cd ui && yarn build
 
-$(UI_DEPLOY_ARTIFACT): $(UI_BUILD_ARTIFACT)
+deploy: build $(UI_BUILD_ARTIFACT)
 	mkdir -p deploy
-	cd ui && zip -r ../$(UI_DEPLOY_ARTIFACT) build
-
-.PHONY: deploy
-deploy: $(DAR) $(UI_DEPLOY_ARTIFACT)
-	cp $< deploy/
+	cp -pr $(DAR) ui/build/ deploy/
 
 
 .PHONY: clean
