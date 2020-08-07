@@ -24,5 +24,4 @@ ENTRYPOINT daml start \
 # Cannot explicitly specify, because of: https://github.com/digital-asset/daml/issues/5777
 # Relying on default port behaviour as of now.
 #  --navigator-option="--port=7500" \
-  --open-browser=no \
-  --json-api-port=none
+  --open-browser=no

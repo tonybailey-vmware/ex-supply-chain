@@ -13,5 +13,6 @@ COPY --chown=daml scripts scripts
 
 ENV JAVA_TOOL_OPTIONS -Xmx128m
 
+# needs deploy/ mounted
 ENTRYPOINT scripts/waitForLedger.sh "$LEDGER_HOST" "$LEDGER_PORT" && \
-           scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" target/app.dar
+           scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" deploy/app.dar

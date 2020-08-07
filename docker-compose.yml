@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: builder.Dockerfile
     volumes:
-      - daml-data:/home/daml/target
+      - artifacts:/home/daml/deploy
 
   supplychain-sandbox:
     image: digitalasset/supplychain-sandbox:0.1.0
@@ -35,7 +35,23 @@ services:
       - LEDGER_HOST=supplychain-sandbox
       - LEDGER_PORT=6865
     volumes:
-      - daml-data:/home/daml/target:ro
+      - artifacts:/home/daml/deploy:ro
+
+  supplychain-ui:
+    image: digitalasset/supplychain-ui:0.1.0
+    build:
+      context: .
+      dockerfile: ui.Dockerfile
+    depends_on:
+      - "supplychain-builder"
+      - "supplychain-sandbox"
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      - JSON_API_URL=supplychain-sandbox
+      - JSON_API_PORT=7575
+    volumes:
+      - artifacts:/home/node/deploy:ro
 
 volumes:
-  daml-data:
+  artifacts:

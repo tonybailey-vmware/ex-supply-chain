@@ -7,13 +7,17 @@ ARG sdk_vsn=1.3.0
 
 FROM digitalasset/daml-sdk:${sdk_vsn} AS source
 
-# use something else than /home/daml/ because it already has ./.daml/ with DAML installed
-RUN mkdir -p /home/daml/target
 WORKDIR /home/daml/
 
-COPY --chown=daml daml.yaml .
-COPY --chown=daml src/main/daml ./src/main/daml
 COPY --chown=daml Makefile .
+COPY --chown=daml daml.yaml .
+COPY --chown=daml src src
+COPY --chown=daml ui/package.json ui/package.json
+COPY --chown=daml ui/public ui/public
+COPY --chown=daml ui/rename-proxy.js ui/rename-proxy.js
+COPY --chown=daml ui/src ui/src
+COPY --chown=daml ui/tsconfig.json ui/tsconfig.json
+COPY --chown=daml ui/yarn.lock ui/yarn.lock
 
 FROM source
 
@@ -21,6 +25,6 @@ USER root
 RUN apk add yarn make
 USER daml
 
-RUN make build-dar build-jscodegen
+RUN make deploy
 
-ENTRYPOINT ls target/ -la
+ENTRYPOINT echo "Build artifacts has been synced to shared volume:" && ls -l deploy/
