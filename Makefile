@@ -1,8 +1,8 @@
 DAML_SRC=$(shell find src/ -name '*.daml')
 TS_SRC=$(shell find ui/src/ -name '*.ts*')
 
-DAR=target/supplychain-1.0.0.dar
-JS_CODEGEN_DIR=daml.js
+DAR=target/app.dar
+JS_CODEGEN_DIR=target/daml.js
 JS_CODEGEN_ARTIFACT=$(JS_CODEGEN_DIR)/supplychain-1.0.0/package.json
 UI_INSTALL_ARTIFACT=ui/node_modules
 UI_BUILD_ARTIFACT=ui/build/index.html
