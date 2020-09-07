@@ -8,10 +8,11 @@ daml 1.2
 module Test.DA.Triggers.TriggerTestUtils where
 
 import DA.Next.Map qualified as Maps
+import Daml.Script (Script)
 import Daml.Trigger.Assert
 import Daml.Trigger.LowLevel (Command)
 import Daml.Trigger (Trigger)
 
-testTrigger : Trigger () -> Party -> ACSBuilder -> Scenario [Command]
+testTrigger : Trigger () -> Party -> ACSBuilder -> Script [Command]
 testTrigger trigger party acs =
   flattenCommands <$> testRule trigger party acs Maps.empty ()

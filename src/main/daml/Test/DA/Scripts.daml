@@ -1,0 +1,278 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+{-# LANGUAGE ApplicativeDo #-}
+module Test.DA.Scripts where
+
+import DA.Date
+import DA.Assert
+import DA.Time
+import Daml.Script
+
+import DA.RefApps.SupplyChain.Relationship
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Delivery
+import DA.RefApps.SupplyChain.Inventory
+import DA.RefApps.SupplyChain.Quote
+import DA.RefApps.SupplyChain.QuoteRequest
+import DA.RefApps.SupplyChain.Aggregate
+import DA.RefApps.SupplyChain.Order
+
+data Parties = Parties with
+  buyer : Party
+  seller : Party
+  supplier : Party
+  warehouse1 : Party
+  warehouse2 : Party
+  transportComp1 : Party
+  transportComp2 : Party
+
+data SetupData = SetupData with
+    buyerRoleCid: ContractId BuyerSellerRelationship
+    product01: OrderedProduct
+    product02: OrderedProduct
+    inventoryW1P1Cid: ContractId InventoryItem
+    inventoryW1P2Cid: ContractId InventoryItem
+    inventoryW2P1Cid: ContractId InventoryItem
+    inventoryW2P2Cid: ContractId InventoryItem
+
+allocateParties : Script Parties
+allocateParties = do
+  buyer <- allocateParty "Buyer"
+  seller <- allocateParty "Seller"
+  supplier <- allocateParty "Supplier"
+  warehouse1 <- allocateParty "Warehouse1"
+  warehouse2 <- allocateParty "Warehouse2"
+  transportComp1 <- allocateParty "TransportCompany1"
+  transportComp2 <- allocateParty "TransportCompany2"
+  pure Parties{..}
+
+-- Setup script to prepare the relationships and inventory
+setup : Parties -> Script SetupData
+setup Parties{..} = script do
+  -- Predefined data
+  let
+    product01 = OrderedProduct "Product 1" 100 (date 2019 Dec 1) (date 2019 Dec 10)
+    product02 = OrderedProduct "Product 2" 10 (date 2019 Dec 10) (date 2019 Dec 14)
+    buyerAddress = "1234, Vice City, Arkham street 13"
+
+  -- Market setup
+  buyerSellerRelInvitation <- submit buyer do
+    createCmd $ BuyerSellerRelationshipInvitation buyer buyerAddress seller
+  buyerRole <- submit seller do
+    exerciseCmd buyerSellerRelInvitation BuyerSellerRelationshipInvitation_Accept
+
+  inventoryW1P1Cid <- submit warehouse1 do
+    createCmd InventoryItem
+      with
+        warehouse = warehouse1
+        supplier = supplier
+        productName = product01.productName
+        quantity = 50
+        unitPrice = 55.0
+  inventoryW1P2Cid <- submit warehouse1 do
+    createCmd InventoryItem
+      with
+        warehouse = warehouse1
+        supplier = supplier
+        productName = product02.productName
+        quantity = 100
+        unitPrice = 60.0
+
+  inventoryW2P1Cid <- submit warehouse2 do
+    createCmd InventoryItem
+      with
+        warehouse = warehouse2
+        supplier = supplier
+        productName = product01.productName
+        quantity = 200
+        unitPrice = 58.0
+  inventoryW2P2Cid <- submit warehouse2 do
+    createCmd InventoryItem
+      with
+        warehouse = warehouse2
+        supplier = supplier
+        productName = product02.productName
+        quantity = 100
+        unitPrice = 65.0
+
+  setTime (time (date 2019 Jun 3) 0 0 0)
+
+  return SetupData with
+    buyerRoleCid = buyerRole, ..
+
+-- Script to walk through the complete happy path of this supply chain ref app
+fullScript : Script ()
+fullScript = script do
+  parties@Parties{..} <- allocateParties
+  setupData <- setup parties
+
+  -- Sending quote request
+  [quoteReq1, _quoteReq2] <- submit buyer do
+    qr1 <- exerciseCmd setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
+                        products = [setupData.product01]
+    qr2 <- exerciseCmd setupData.buyerRoleCid BuyerSellerRelationship_SendQuoteRequest with
+                        products = [setupData.product02]
+    return [qr1, qr2]
+
+  -- Propagation of quote request towards supplier
+  accepted <- submit seller do
+    exerciseCmd quoteReq1 $ QuoteRequest_Accept "3024"
+  acceptedQr <- submit seller do
+    exerciseCmd accepted QuoteRequestAccepted_SendToSupplier with
+      supplier = supplier
+
+  -- Acceptance of invitation to supply the delivery, manual selection of product+warehouse+quantity for the quote
+  supplyRequest <- submit supplier do
+      exerciseCmd acceptedQr QuoteRequestSupplyInvitation_Accept
+  (tranQuoteReqPending, [invReservationReq1, invReservationReq2],
+   [transportQuoteRequestT1W1, transportQuoteRequestT1W2,
+    transportQuoteRequestT2W1, transportQuoteRequestT2W2]) <-  submit supplier do
+      -- Selection of warehouses and transport companies, sending transport requests, asking for transport quotes
+      exerciseCmd supplyRequest $ SupplyRequest_StartPriceCollection [warehouse1, warehouse2] [transportComp1, transportComp2]
+
+  -- Transport companies submit their transport quotes
+  let
+    transportQuoteItemT1_1 = TransportQuoteItem 25 25.0 (date 2019 Dec 3) (date 2019 Dec 7)
+    transportQuoteItemT1_2 = TransportQuoteItem 50 50.0 (date 2019 Dec 5) (date 2019 Dec 8)
+    transportQuoteItemT2_1 = TransportQuoteItem 50 100.0 (date 2019 Dec 4) (date 2019 Dec 7)
+    transportQuoteItemT2_2 = TransportQuoteItem 100 200.0 (date 2019 Dec 7) (date 2019 Dec 8)
+  transportQuoteT1W1 <- submit transportComp1 do
+    exerciseCmd transportQuoteRequestT1W1 $ TransportQuoteRequest_Accept transportQuoteItemT1_1
+  transportQuoteT1W2 <- submit transportComp1 do
+    exerciseCmd transportQuoteRequestT1W2 $ TransportQuoteRequest_Accept transportQuoteItemT1_2
+  transportQuoteT2W1 <- submit transportComp2 do
+    exerciseCmd transportQuoteRequestT2W1 $ TransportQuoteRequest_Accept transportQuoteItemT2_1
+  transportQuoteT2W2 <- submit transportComp2 do
+    exerciseCmd transportQuoteRequestT2W2 $ TransportQuoteRequest_Accept transportQuoteItemT2_2
+
+  -- warehouse triggers accept reservation requests
+  invReservationCid1 <- submit warehouse1 do
+    exerciseCmd invReservationReq1 $ InventoryQuoteRequest_Accept setupData.inventoryW1P1Cid
+
+  invReservationCid2 <- submit warehouse2 do
+    exerciseCmd invReservationReq2 $ InventoryQuoteRequest_Accept setupData.inventoryW2P1Cid
+
+  -- After a manual signal (that means end of transport quote request period), supplier's trigger collects
+  -- all the available (tranport and inventory) quotes sent in by transport companies with the inventory items
+  -- and the best is chosen
+
+  trigger <- submit supplier do
+    exerciseCmd tranQuoteReqPending TransportQuoteRequestPending_ChooseTransport
+  aggregatedQuotePending <- submit supplier do
+    exerciseCmd trigger $
+      CalculateAggregatedQuote_Proceed
+        [transportQuoteT1W1, transportQuoteT1W2, transportQuoteT2W1, transportQuoteT2W2]
+        [invReservationCid1, invReservationCid2]
+        [setupData.inventoryW1P1Cid, setupData.inventoryW1P2Cid, setupData.inventoryW2P1Cid, setupData.inventoryW2P2Cid]
+
+  -- Supplier sends the quote to seller (with the corresponding transport capacity lock)
+  aggregatedQuoteTrigger <- submit supplier do
+    exerciseCmd aggregatedQuotePending $ AggregatedQuotePending_SendQuoteToSeller
+
+  -- This triggers seller's trigger that creates an aggregated quote containing prices without the margin, yet
+  -- This is for visibility purposes, in the next step, seller adds the margin (not visible for supplier)
+  aggregatedQuote <- submit seller do
+    exerciseCmd aggregatedQuoteTrigger AggregatedQuoteTrigger_Execute
+  quote <- submit seller do
+    exerciseCmd aggregatedQuote $ AggregatedQuote_AddMargin 0.1
+
+  -- Buyer accepts the quote
+  order <- submit buyer do
+    exerciseCmd quote QuoteForBuyer_Accept
+
+  -- Seller start the delivery process notifying all the participants of the process
+  [deliveryInstruction1, deliveryInstruction2, deliveryInstruction3] <- submit seller do
+    exerciseCmd order ConfirmedOrder_StartDelivery
+
+  setTime (time (date 2019 Dec 3) 0 0 0)
+
+  -- Transport company asks the warehouse for pickup acknowledgement
+  pickUpReq1 <- submit transportComp1 do
+    exerciseCmd deliveryInstruction1 DeliveryInstruction_PickUp
+
+  setTime (time (date 2019 Dec 4) 0 0 0)
+
+  pickUpReq2 <- submit transportComp2 do
+    exerciseCmd deliveryInstruction2 DeliveryInstruction_PickUp
+
+  setTime (time (date 2019 Dec 5) 0 0 0)
+
+  pickUpReq3 <- submit transportComp1 do
+    exerciseCmd deliveryInstruction3 DeliveryInstruction_PickUp
+
+  -- Warehouse acknowledges the pickup and lets the transport companies to transport the products
+  (transportPending1, transportPending2) <- submit warehouse1 do
+    d1 <- exerciseCmd pickUpReq1 PickUpRequest_Accept
+    d2 <- exerciseCmd pickUpReq2 PickUpRequest_Accept
+    return (d1, d2)
+
+  transportPending3 <- submit warehouse2 do
+    exerciseCmd pickUpReq3 PickUpRequest_Accept
+
+  -- Transportation happens
+  (delivery1, delivery3) <- submit transportComp1 do
+    d1 <- exerciseCmd transportPending1 TransportPending_Deliver
+    d3 <- exerciseCmd transportPending3 TransportPending_Deliver
+    return (d1, d3)
+
+  delivery2 <- submit transportComp2 do
+    exerciseCmd transportPending2 TransportPending_Deliver
+
+  setTime (time (date 2019 Dec 7) 0 0 0)
+
+  -- Buyer ackowledges delivery and pays
+  (deliveryComplete1, deliveryComplete2) <- submit buyer do
+    dc1 <- exerciseCmd delivery1 Delivery_Acknowledge
+    dc2 <- exerciseCmd delivery2 Delivery_Acknowledge
+    return (dc1, dc2)
+
+  setTime (time (date 2019 Dec 8) 0 0 0)
+
+  deliveryComplete3 <- submit buyer do
+    exerciseCmd delivery3 Delivery_Acknowledge
+
+  -- Transport company acknowledges delivery as well finishing it and releasing capacity
+  ((deliveryPayment1, buyerSellerObligationCid1),
+   (deliveryPayment2, buyerSellerObligationCid2),
+   (deliveryPayment3, buyerSellerObligationCid3)) <- submit seller do
+    delivery1 <- exerciseCmd deliveryComplete1 DeliveryComplete_Accept
+    delivery2 <- exerciseCmd deliveryComplete2 DeliveryComplete_Accept
+    delivery3 <- exerciseCmd deliveryComplete3 DeliveryComplete_Accept
+    pure (delivery1, delivery2, delivery3)
+
+  Some buyerSellerObligation1 <- queryContractId seller buyerSellerObligationCid1
+  Some buyerSellerObligation2 <- queryContractId seller buyerSellerObligationCid2
+  Some buyerSellerObligation3 <- queryContractId seller buyerSellerObligationCid3
+  buyerSellerObligation1.price === 1540.0
+  buyerSellerObligation2.price === 1567.5
+  buyerSellerObligation3.price === 3245.0
+  return (deliveryPayment1, deliveryPayment2, deliveryPayment3)
+
+  -- TODO: Ask whether it is OK to release transport capacity lock after payment
+
+  ((deliverySupplierPayment1, sellerSupplierObligationCid1),
+   (deliverySupplierPayment2, sellerSupplierObligationCid2),
+   (deliverySupplierPayment3, sellerSupplierObligationCid3)) <- submit supplier $
+   (,,) <$> exerciseCmd deliveryPayment1 DeliveryPayment_Accept
+        <*> exerciseCmd deliveryPayment2 DeliveryPayment_Accept
+        <*> exerciseCmd deliveryPayment3 DeliveryPayment_Accept
+  (supplierWarehouseObligationCid3, supplierTransportObligationCid3) <- submit supplier do
+    _ <- exerciseCmd deliverySupplierPayment1 DeliverySupplierPayment_Pay
+    _ <- exerciseCmd deliverySupplierPayment2 DeliverySupplierPayment_Pay
+    (supplierWarehouseObligationCid3, supplierTransportObligationCid3) <- exerciseCmd deliverySupplierPayment3 DeliverySupplierPayment_Pay
+    pure (supplierWarehouseObligationCid3, supplierTransportObligationCid3)
+
+  Some sellerSupplierObligation1 <- queryContractId supplier sellerSupplierObligationCid1
+  Some sellerSupplierObligation2 <- queryContractId supplier sellerSupplierObligationCid2
+  Some sellerSupplierObligation3 <- queryContractId supplier sellerSupplierObligationCid3
+  Some supplierWarehouseObligation3 <- queryContractId supplier supplierWarehouseObligationCid3
+  Some supplierTransportObligation3 <- queryContractId supplier supplierTransportObligationCid3
+  -- TODO: Insert real numbers
+  sellerSupplierObligation1.price === 1400.0
+  sellerSupplierObligation2.price === 1425.0
+  sellerSupplierObligation3.price === 2950.0
+  supplierWarehouseObligation3.price === 2900.0
+  supplierTransportObligation3.price === 50.0
