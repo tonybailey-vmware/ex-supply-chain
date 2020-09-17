@@ -7,6 +7,7 @@ daml 1.2
 
 module Test.DA.Triggers.CalculateAggregatedQuoteTriggerTest where
 
+import Daml.Script
 import Daml.Trigger.Assert
 import DA.Assert
 import DA.Foldable hiding (length)
@@ -19,21 +20,21 @@ import DA.RefApps.SupplyChain.Types
 import Test.DA.Triggers.TriggerTestUtils
 import Test.DA.TestUtils
 
-triggerProceedsWithAllQuotesWithMatchingItemsTest: Scenario ()
-triggerProceedsWithAllQuotesWithMatchingItemsTest = scenario do
-  party <- getParty "party"
+triggerProceedsWithAllQuotesWithMatchingItemsTest: Script ()
+triggerProceedsWithAllQuotesWithMatchingItemsTest = script do
+  party <- allocateParty "party"
 
-  trigger1 <- submit party do create $ createTrigger party "Workflow 1"
-  trigger2 <- submit party do create $ createTrigger party "Workflow 2"
+  trigger1 <- submit party do createCmd $ createTrigger party "Workflow 1"
+  trigger2 <- submit party do createCmd $ createTrigger party "Workflow 2"
 
   -- quote11 is intentionally missing
-  quote12 <- submit party do create $ createInventoryQuote "Workflow 1" party "Product 2"
-  quote21 <- submit party do create $ createInventoryQuote "Workflow 2" party "Product 1"
-  quote22 <- submit party do create $ createInventoryQuote "Workflow 2" party "Product 2"
-  quote22' <- submit party do create $ createInventoryQuote "Workflow 2" party "Product 2"
+  quote12 <- submit party do createCmd $ createInventoryQuote "Workflow 1" party "Product 2"
+  quote21 <- submit party do createCmd $ createInventoryQuote "Workflow 2" party "Product 1"
+  quote22 <- submit party do createCmd $ createInventoryQuote "Workflow 2" party "Product 2"
+  quote22' <- submit party do createCmd $ createInventoryQuote "Workflow 2" party "Product 2"
 
-  item1 <- submit party do create $ createItem party "Product 1"
-  item2 <- submit party do create $ createItem party "Product 2"
+  item1 <- submit party do createCmd $ createItem party "Product 1"
+  item2 <- submit party do createCmd $ createItem party "Product 2"
 
   let acs = foldMap toACS [trigger1, trigger2]
          <> foldMap toACS [quote12, quote21, quote22, quote22']
@@ -68,10 +69,10 @@ triggerProceedsWithAllQuotesWithMatchingItemsTest = scenario do
         seller = party
         products = []
 
-matchesChecksBothProductnameAndWarehouseTest : Scenario ()
-matchesChecksBothProductnameAndWarehouseTest = scenario do
-  warehouse1 <- getParty "Warehouse1"
-  warehouse2 <- getParty "Warehouse2"
+matchesChecksBothProductnameAndWarehouseTest : Script ()
+matchesChecksBothProductnameAndWarehouseTest = script do
+  warehouse1 <- allocateParty "Warehouse1"
+  warehouse2 <- allocateParty "Warehouse2"
   let productName1 = "Product 1"
   let productName2 = "Product 2"
   let quote11 = InventoryQuote with
@@ -86,13 +87,13 @@ matchesChecksBothProductnameAndWarehouseTest = scenario do
   False === matches (createItem warehouse1 productName2) quote11
   False === matches (createItem warehouse2 productName2) quote11
 
-isInventoryItemAmongInventoryQuotesTest : Scenario ()
-isInventoryItemAmongInventoryQuotesTest = scenario do
-  party <- getParty "Warehouse1"
+isInventoryItemAmongInventoryQuotesTest : Script ()
+isInventoryItemAmongInventoryQuotesTest = script do
+  party <- allocateParty "Warehouse1"
   let productName1 = "Product 1"
   let productName2 = "Product 2"
   let item = createItem party productName1
-  dummyCid <- submit party do create $ createInventoryQuote "" party ""
+  dummyCid <- submit party do createCmd $ createInventoryQuote "" party ""
   let falseList = [ (dummyCid, createInventoryQuote "" party productName2) ]
   let trueList = falseList <> [ (dummyCid, createInventoryQuote "" party productName1) ]
   True === isInventoryItemAmongInventoryQuotes item trueList

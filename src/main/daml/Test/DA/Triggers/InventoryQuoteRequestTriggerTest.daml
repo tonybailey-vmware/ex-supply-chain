@@ -7,6 +7,7 @@ daml 1.2
 
 module Test.DA.Triggers.InventoryQuoteRequestTriggerTest where
 
+import Daml.Script
 import Daml.Trigger.Assert
 import DA.Assert
 import DA.Foldable hiding (length)
@@ -17,15 +18,15 @@ import DA.RefApps.SupplyChain.Triggers.InventoryQuoteRequestTrigger
 import Test.DA.Triggers.TriggerTestUtils
 import Test.DA.TestUtils
 
-triggerAcceptsAllRequestsWithMatchingItemsTest: Scenario ()
-triggerAcceptsAllRequestsWithMatchingItemsTest = scenario do
-  party <- getParty "party"
+triggerAcceptsAllRequestsWithMatchingItemsTest: Script ()
+triggerAcceptsAllRequestsWithMatchingItemsTest = script do
+  party <- allocateParty "party"
   -- item1 is intentionally missing
-  item2 <- submit party do create $ createItem party "Product 2"
-  item3 <- submit party do create $ createItem party "Product 3"
-  request1 <- submit party do create $ createRequest party "Product 1"
-  request2 <- submit party do create $ createRequest party "Product 2"
-  request3 <- submit party do create $ createRequest party "Product 3"
+  item2 <- submit party do createCmd $ createItem party "Product 2"
+  item3 <- submit party do createCmd $ createItem party "Product 3"
+  request1 <- submit party do createCmd $ createRequest party "Product 1"
+  request2 <- submit party do createCmd $ createRequest party "Product 2"
+  request3 <- submit party do createCmd $ createRequest party "Product 3"
   let acs = foldMap toACS [request1, request2, request3]
          <> foldMap toACS [item2, item3]
 
@@ -41,10 +42,10 @@ triggerAcceptsAllRequestsWithMatchingItemsTest = scenario do
     request3 === cid
     expectedChoice3 === actualChoice
 
-matchesChecksBothProductnameAndWarehouseTest : Scenario ()
-matchesChecksBothProductnameAndWarehouseTest = scenario do
-  warehouse1 <- getParty "Warehouse1"
-  warehouse2 <- getParty "Warehouse2"
+matchesChecksBothProductnameAndWarehouseTest : Script ()
+matchesChecksBothProductnameAndWarehouseTest = script do
+  warehouse1 <- allocateParty "Warehouse1"
+  warehouse2 <- allocateParty "Warehouse2"
   let productName1 = "Product 1"
   let productName2 = "Product 2"
   let request11 = createRequest warehouse1 productName1
@@ -53,12 +54,12 @@ matchesChecksBothProductnameAndWarehouseTest = scenario do
   False === matches (createItem warehouse1 productName2) request11
   False === matches (createItem warehouse2 productName2) request11
 
-itemMatchingTest : Scenario ()
-itemMatchingTest = scenario do
-  party <- getParty "Warehouse1"
+itemMatchingTest : Script ()
+itemMatchingTest = script do
+  party <- allocateParty "Warehouse1"
   let productName1 = "Product 1"
   let productName2 = "Product 2"
-  dummyCid <- submit party do create $ createItem party productName1
+  dummyCid <- submit party do createCmd $ createItem party productName1
   let request = createRequest party productName1
   let items =
         [ (dummyCid, createItem party productName2)

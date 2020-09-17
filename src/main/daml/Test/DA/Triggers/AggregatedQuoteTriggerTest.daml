@@ -7,6 +7,7 @@ daml 1.2
 
 module Test.DA.Triggers.AggregatedQuoteTriggerTest where
 
+import Daml.Script
 import Daml.Trigger.Assert
 import DA.Assert
 
@@ -16,13 +17,11 @@ import DA.RefApps.SupplyChain.Triggers.AggregatedQuoteTrigger
 
 import Test.DA.Triggers.TriggerTestUtils
 
-allAggregatedQuotesExecuted: Scenario ()
-allAggregatedQuotesExecuted = scenario do
-  party <- getParty "party"
-  aggregatedQuoteTrigger1 <- submit party do
-    createAggregatedQuoteTrigger party
-  aggregatedQuoteTrigger2 <- submit party do
-    createAggregatedQuoteTrigger party
+allAggregatedQuotesExecuted: Script ()
+allAggregatedQuotesExecuted = script do
+  party <- allocateParty "party"
+  aggregatedQuoteTrigger1 <- createAggregatedQuoteTrigger party
+  aggregatedQuoteTrigger2 <- createAggregatedQuoteTrigger party
   let acs = toACS aggregatedQuoteTrigger1 <> toACS aggregatedQuoteTrigger2
 
   commands <- testTrigger trigger party acs
@@ -36,7 +35,7 @@ allAggregatedQuotesExecuted = scenario do
     AggregatedQuoteTrigger_Execute === actualChoice
 
   where
-    createAggregatedQuoteTrigger : Party -> Update (ContractId AggregatedQuoteTrigger)
+    createAggregatedQuoteTrigger : Party -> Script (ContractId AggregatedQuoteTrigger)
     createAggregatedQuoteTrigger party = do
       let
         workflowId = ""
@@ -51,8 +50,8 @@ allAggregatedQuotesExecuted = scenario do
           seller
           items
         buyerAddress = ""
-      deliveryPlanCid <- create deliveryPlan
-      create AggregatedQuoteTrigger with
+      deliveryPlanCid <- submit party $ createCmd deliveryPlan
+      submit party $ createCmd AggregatedQuoteTrigger with
         workflowId
         supplier
         buyer
