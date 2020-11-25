@@ -149,7 +149,9 @@ jobs:
       - run:
           name: Install Yarn
           command: |
-            scripts/install-node-and-yarn.sh
+            apt-get update || apt-get update # workaround apt error "Could not open file /var..."
+            scripts/install-node.sh
+            scripts/install-yarn.sh
       - run:
           name: Yarn Build
           command: |
