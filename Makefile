@@ -13,6 +13,7 @@ $(DAR): $(DAML_SRC)
 .PHONY: build-dar
 build-dar: $(DAR)
 
+
 ### JS Codegen ###
 
 JS_CODEGEN_DIR=target/daml.js
@@ -44,6 +45,7 @@ TS_SRC=$(shell find ui/src/ -name '*.ts*')
 
 $(UI_BUILD_ARTIFACT): $(UI_INSTALL_ARTIFACT) $(TS_SRC)
 	cd ui && yarn build
+
 
 deploy: build $(UI_BUILD_ARTIFACT)
 	mkdir -p deploy
