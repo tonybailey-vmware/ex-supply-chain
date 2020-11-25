@@ -24,7 +24,10 @@ There are two options to run the app:
   - Docker
 - Option 2: in standalone mode. Requires:
   - [DAML SDK](https://docs.daml.com/)
-  - Java 8 or higher
+  - Java
+  - Yarn
+  - Node v12
+  - Make
 
 ### Starting the App
 
@@ -39,16 +42,26 @@ Note: make sure to have at least 8 GBs of memory allocated to Docker.
 2. Open UI with a browser at http://localhost:7500.
 
 
-#### Start App in Standalone
+#### Start App in Standalone Mode
 
-1. Build, then start the DAML Sandbox and Navigator. Type:
+1. Build the App. Type:
+    ```shell
+    make build
+    ```
+    **Note:** If you change the DAML models locally, you need to re-run this command before starting the application.
+2. Start the DAML Sandbox and Navigator. Type:
     ```shell
     daml start --sandbox-option --address=localhost
     ```
     The navigator will automatically open in new browser tab at http://localhost:7500.
-2. Once the sandbox has started, start the automation logic by starting triggers. Type:
+3. Once the sandbox has started, start the automation logic by starting triggers. Type:
     ```shell
     scripts/startTriggers.sh localhost 6865 .daml/dist/*.dar
+    ```
+4. Once the sandbox has started, start the automation logic by starting triggers. Type:
+    ```shell
+    cd ui
+    yarn start
     ```
 
 ### Stopping the App
