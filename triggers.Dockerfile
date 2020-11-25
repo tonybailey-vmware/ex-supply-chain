@@ -3,11 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-ARG sdk_vsn=1.5.0
+ARG sdk_vsn=1.7.0
 
 FROM digitalasset/daml-sdk:${sdk_vsn}
 
-WORKDIR /home/daml/
+USER root
+RUN apt-get update || apt-get update
+RUN apt-get -y install netcat-openbsd
+USER daml
+
+WORKDIR /home/daml
 
 COPY --chown=daml scripts scripts
 
