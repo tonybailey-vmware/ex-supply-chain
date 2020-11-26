@@ -20,7 +20,6 @@ COPY --chown=daml src src
 COPY --chown=daml scripts scripts
 COPY --chown=daml ui/package.json ui/package.json
 COPY --chown=daml ui/public ui/public
-COPY --chown=daml ui/rename-proxy.js ui/rename-proxy.js
 COPY --chown=daml ui/src ui/src
 COPY --chown=daml ui/tsconfig.json ui/tsconfig.json
 COPY --chown=daml ui/yarn.lock ui/yarn.lock
