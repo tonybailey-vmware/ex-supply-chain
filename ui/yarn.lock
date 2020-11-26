@@ -1128,53 +1128,53 @@
   integrity sha512-ij4wRiunFfaJxjB0BdrYHIH8FxBJpOwNPhhAcunlmPdXudL1WQV1qoP9un6JsEBAgQH+7UXyyjh0g7jTxXK6tg==
 
 "@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7@file:../target/daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7":
-  version "1.2.0"
+  version "1.7.0"
   dependencies:
-    "@daml/ledger" "1.2.0"
-    "@daml/types" "1.2.0"
+    "@daml/ledger" "1.7.0"
+    "@daml/types" "1.7.0"
     "@mojotech/json-type-validation" "^3.1.0"
 
 "@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662@file:../target/daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662":
-  version "1.2.0"
+  version "1.7.0"
   dependencies:
-    "@daml/ledger" "1.2.0"
-    "@daml/types" "1.2.0"
+    "@daml/ledger" "1.7.0"
+    "@daml/types" "1.7.0"
     "@mojotech/json-type-validation" "^3.1.0"
 
 "@daml.js/supplychain-1.0.0@file:../target/daml.js/supplychain-1.0.0":
-  version "1.2.0"
+  version "1.7.0"
   dependencies:
-    "@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7" "file:../../../.cache/yarn/v6/npm-@daml-js-supplychain-1-0-0-1.2.0-ac4c988d-4a17-4ccc-9c19-2a8058db4033-1592819002353/node_modules/@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7"
-    "@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662" "file:../../../.cache/yarn/v6/npm-@daml-js-supplychain-1-0-0-1.2.0-ac4c988d-4a17-4ccc-9c19-2a8058db4033-1592819002353/node_modules/@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662"
-    "@daml/ledger" "1.2.0"
-    "@daml/types" "1.2.0"
+    "@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7" "file:../../../../Library/Caches/Yarn/v6/npm-@daml-js-supplychain-1-0-0-1.7.0-43fcf58c-35b8-451d-9e95-979e77111baa-1606393515308/node_modules/@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7"
+    "@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662" "file:../../../../Library/Caches/Yarn/v6/npm-@daml-js-supplychain-1-0-0-1.7.0-43fcf58c-35b8-451d-9e95-979e77111baa-1606393515308/node_modules/@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662"
+    "@daml/ledger" "1.7.0"
+    "@daml/types" "1.7.0"
     "@mojotech/json-type-validation" "^3.1.0"
 
-"@daml/ledger@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@daml/ledger/-/ledger-1.2.0.tgz#d4a3b0cafb369bc6a5c1451915bad81a4b7c1094"
-  integrity sha512-SFUgp7rKR57WapYhphmBqXqs81ZYW7D6oJM3NC3HvmswosqqPiUfZJM8xccBbF31lU+NTivT02llszlzMhXe2w==
+"@daml/ledger@1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@daml/ledger/-/ledger-1.7.0.tgz#b44648426e26b842c9afded05360107dceee2a25"
+  integrity sha512-muO2RHa3UPPrxaRLvhLD00cgom6vrDCUTsBVX+2qgwfJviqHdBlYK2tY5Rk2RHA5cdfdDRSsGhU5AsxNp2020g==
   dependencies:
-    "@daml/types" "1.2.0"
+    "@daml/types" "1.7.0"
     "@mojotech/json-type-validation" "^3.1.0"
     cross-fetch "^3.0.4"
     events "^3.1.0"
     isomorphic-ws "^4.0.1"
     ws "^7.2.1"
 
-"@daml/react@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@daml/react/-/react-1.2.0.tgz#ec5bc61d9efa5471add447d4933f1c39da953a9b"
-  integrity sha512-3UzWDVHlTTTuhh3tntLJg27+rCYTsyhcJAlfJ7SczLLviLdDY2RF1+RzwyvbRVJKCGNuJkCGCrti6su0kFC/zg==
+"@daml/react@1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@daml/react/-/react-1.7.0.tgz#40c2e8cb135aa8a0a207a38246694d3f9caf96da"
+  integrity sha512-HbNfrVXEoC0aj8595ZV1/8/ko0AtsAcPFqSdlKmS3a0rK7QduoG9ubZPx9TZ2uWRUbjo2kvDLS2sLf5tPyKcIA==
   dependencies:
-    "@daml/ledger" "1.2.0"
-    "@daml/types" "1.2.0"
+    "@daml/ledger" "1.7.0"
+    "@daml/types" "1.7.0"
     react "^16.12.0"
 
-"@daml/types@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@daml/types/-/types-1.2.0.tgz#2fb5e1b83db42310c35c53d97213b1cadbed0f90"
-  integrity sha512-gZwcEsTDy1eCTgslu59ovfV6C4eDzjmkg+iKzVRP8rNwnN49JdTHDBQ15i9yPj8BISGHq/nHThl6eAbcRFhD8Q==
+"@daml/types@1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@daml/types/-/types-1.7.0.tgz#6a18f7c9b4c38f96fe099537fd71dd3ab5434546"
+  integrity sha512-0Hz5KoIGgNZQ+hbAt2JlWKFl6TNw2Pftgy+0B7N0EUxxhKk+vxNy3Iw8Lmdi2UW+kLAZpamDwz1TCHrwv6KgFg==
   dependencies:
     "@mojotech/json-type-validation" "^3.1.0"
 
