@@ -193,6 +193,10 @@
                         <exclude>**/*.hie</exclude>
                         <exclude>**/*.log</exclude>
                         <exclude>**/.daml/package-database/**/*.*</exclude>
+                        <exclude>ui/node_modules/**</exclude>
+                        <exclude>ui/build/**</exclude>
+                        <exclude>.dockerignore</exclude>
+                        <exclude>**/*.dar</exclude>
                     </excludes>
                     <mapping>
                         <daml>DOUBLEDASHES_STYLE</daml>
