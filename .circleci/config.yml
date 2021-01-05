@@ -182,7 +182,7 @@ workflows:
       - mvn_test:
           daml_sdk_version: "1.8.0"
           context: refapps
-      - blackduck:
+      - blackduck_check:
           daml_sdk_version: "1.8.0"
           context: blackduck
           filters:
