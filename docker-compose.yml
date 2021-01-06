@@ -46,12 +46,10 @@ services:
       - "supplychain-builder"
       - "supplychain-sandbox"
     ports:
-      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:3000:3000"
     environment:
-      - JSON_API_URL=supplychain-sandbox
-      - JSON_API_PORT=7575
-    volumes:
-      - artifacts:/home/node/deploy:ro
+      - REACT_APP_JSON_API_URL=http://supplychain-sandbox:7575
+      - REACT_APP_JSON_API_WS_URL=ws://supplychain-sandbox:7575
 
 volumes:
   artifacts:

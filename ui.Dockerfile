@@ -30,6 +30,6 @@ WORKDIR ui
 
 RUN yarn install --force --frozen-lockfile
 
-EXPOSE 5000
+EXPOSE 3000
 
 ENTRYPOINT yarn start

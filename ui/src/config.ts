@@ -14,18 +14,24 @@ export const ledgerId = "supply-chain";
 let apiUrl = host.slice(1)
 apiUrl.unshift('api')
 
-export const httpBaseUrl =
-    isLocalDev
-    ? `${window.location.protocol}//${window.location.host}/`
-    : 'https://' + apiUrl.join('.') + (window.location.port ? ':' + window.location.port : '') + '/data/' + ledgerId + '/';
+const jsonApiUrl = process.env.REACT_APP_JSON_API_URL as string;
+const jsonApiWsUrl = process.env.REACT_APP_JSON_API_WS_URL as string;
+
+console.log(`JSON API proxy: ${jsonApiUrl}`);
+console.log(`JSON API WS proxy: ${jsonApiWsUrl}`);
+
+export const httpBaseUrl = jsonApiUrl;
+    // isLocalDev
+    // ? `${window.location.protocol}//${window.location.host}/`
+    // : 'https://' + apiUrl.join('.') + (window.location.port ? ':' + window.location.port : '') + '/data/' + ledgerId + '/';
 
 // Unfortunately, the development server of `create-react-app` does not proxy
 // websockets properly. Thus, we need to bypass it and talk to the JSON API
 // directly in development mode.
-export const wsBaseUrl =
-    isLocalDev
-    ? 'ws://localhost:7575/'
-    : undefined;
+export const wsBaseUrl = jsonApiWsUrl;
+    // isLocalDev
+    // ? 'ws://localhost:7575/'
+    // : undefined;
 
 const applicationId = "supply-chain";
 
