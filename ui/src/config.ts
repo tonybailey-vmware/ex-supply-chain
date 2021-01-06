@@ -12,7 +12,7 @@ export const ledgerId = "supply-chain";
 let apiUrl = host.slice(1)
 apiUrl.unshift('api')
 
-export const httpBaseUrl = process.env.REACT_HTTP_BASE_URL as string;
+export const httpBaseUrl = process.env.REACT_APP_HTTP_BASE_URL as string;
 export const wsBaseUrl = process.env.REACT_APP_WS_BASE_URL as string;
 
 console.log(`JSON API proxy: ${httpBaseUrl}`);

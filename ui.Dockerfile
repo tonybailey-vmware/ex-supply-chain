@@ -25,6 +25,7 @@ COPY ui/public ui/public
 COPY ui/src ui/src
 COPY ui/tsconfig.json ui/tsconfig.json
 COPY ui/yarn.lock ui/yarn.lock
+COPY ui/.env ui/.env
 
 WORKDIR ui
 
