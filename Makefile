@@ -50,6 +50,7 @@ $(UI_BUILD_ARTIFACT): $(UI_INSTALL_ARTIFACT) $(TS_SRC)
 deploy: build $(UI_BUILD_ARTIFACT)
 	mkdir -p deploy
 	cp -pr $(DAR) ui/build/ deploy/
+	cp -pr ui/proxy.js deploy/
 
 
 .PHONY: clean

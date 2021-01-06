@@ -7,10 +7,12 @@ FROM node:alpine
 
 RUN npm install -g react-scripts express express-http-proxy
 RUN yarn global add serve
+RUN apk add nginx
 
 WORKDIR /home/node/deploy
 
 EXPOSE 5000
 
 # needs deploy/ mounted
-ENTRYPOINT serve -s build
+# ENTRYPOINT node proxy.js 5000
+ENTRYPOINT top

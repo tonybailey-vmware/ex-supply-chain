@@ -17,6 +17,7 @@ FROM source
 
 EXPOSE 6865
 EXPOSE 7500
+EXPOSE 7575
 
 ENTRYPOINT daml start \
   --sandbox-option="--address=0.0.0.0" \

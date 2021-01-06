@@ -23,6 +23,7 @@ COPY --chown=daml ui/public ui/public
 COPY --chown=daml ui/src ui/src
 COPY --chown=daml ui/tsconfig.json ui/tsconfig.json
 COPY --chown=daml ui/yarn.lock ui/yarn.lock
+COPY --chown=daml ui/proxy.js ui/proxy.js
 
 USER root
 RUN scripts/install-node.sh
