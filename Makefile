@@ -7,7 +7,7 @@ build: build-dar build-jscodegen build-ui
 DAR=target/app.dar
 DAML_SRC=$(shell find src/ -name '*.daml')
 
-$(DAR): $(DAML_SRC)
+$(DAR): $(DAML_SRC) daml.yaml
 	daml build --output $@
 
 .PHONY: build-dar
@@ -37,26 +37,9 @@ $(UI_INSTALL_ARTIFACT): ui/package.json ui/yarn.lock $(JS_CODEGEN_ARTIFACT)
 build-ui: $(UI_INSTALL_ARTIFACT)
 
 
-### UI Build for deployment ###
-
-UI_DEPLOY_ARTIFACT=deploy/ui.zip
-UI_BUILD_ARTIFACT=ui/build/index.html
-TS_SRC=$(shell find ui/src/ -name '*.ts*')
-
-$(UI_BUILD_ARTIFACT): $(UI_INSTALL_ARTIFACT) $(TS_SRC)
-	cd ui && yarn build
-
-
-deploy: build $(UI_BUILD_ARTIFACT)
-	mkdir -p deploy
-	cp -pr $(DAR) ui/build/ deploy/
-
-
 .PHONY: clean
 clean:
 	rm -rf .daml
 	rm -rf daml.js
 	rm -rf ui/node_modules
-	rm -rf ui/build
-	rm -rf deploy
 	rm -rf target
