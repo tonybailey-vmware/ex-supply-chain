@@ -22,13 +22,15 @@ async function getParties(): Promise<any[]> {
   const defaultUser = "Buyer";
   const token = createToken(defaultUser);
   const options = {
-      url: addPath(httpBaseUrl, '/v1/parties'),
+      url: addPath(httpBaseUrl, 'v1/parties'),
       headers: {
           Authorization: `Bearer ${token}`
       }
   };
   const response = await rp(options).catch(e => console.error(e));
-  const { result } = JSON.parse(response);
+  const k = JSON.parse(response);
+  debugger;
+  const { result } = k;
 
   return result;
 }

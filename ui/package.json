@@ -46,7 +46,6 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:7575",
   "devDependencies": {
     "@types/jsonwebtoken": "^8.5.0",
     "@types/react": "^16.9.36",
