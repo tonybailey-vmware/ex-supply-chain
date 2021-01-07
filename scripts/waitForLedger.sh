@@ -9,7 +9,7 @@ wait_for_ledger() {
   local port="$2"
   until nc -z "$host" "$port"; do
     echo "Waiting for ledger..."
-    sleep 1
+    sleep 5
   done
   echo "Connected to ledger."
 }

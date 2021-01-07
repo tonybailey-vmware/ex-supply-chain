@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Supply Chain application demonstrates a generic example between a Buyer, Seller, Supplier, two Warehouses, and two independent Transport Companies. The process includes: 
+The Supply Chain application demonstrates a generic example between a Buyer, Seller, Supplier, two Warehouses, and two independent Transport Companies. The process includes:
 * Creating a quote request from Buyer to Seller for a given product
 * Supplier collecting quotes for product and transportation from the Warehouses and Transport Companies
 * Aggregating delivery details with price, adding margin, and sending a quote to Buyer
@@ -24,7 +24,10 @@ There are two options to run the app:
   - Docker
 - Option 2: in standalone mode. Requires:
   - [DAML SDK](https://docs.daml.com/)
-  - Java 8 or higher
+  - Java
+  - Yarn
+  - Node v12
+  - Make
 
 ### Starting the App
 
@@ -39,22 +42,36 @@ Note: make sure to have at least 8 GBs of memory allocated to Docker.
 2. Open UI with a browser at http://localhost:7500.
 
 
-#### Start App in Standalone
+#### Start App in Standalone Mode
 
-1. Build, then start the DAML Sandbox and Navigator. Type:
+1. Build the App. Type:
+    ```shell
+    make build
+    ```
+    **Note:** If you change the DAML models locally, you need to re-run this command before starting the application.
+2. Start the DAML Sandbox and Navigator. Type:
     ```shell
     daml start --sandbox-option --address=localhost
     ```
     The navigator will automatically open in new browser tab at http://localhost:7500.
-2. Once the sandbox has started, start the automation logic by starting triggers. Type:
+3. Once the sandbox has started, start the automation logic by starting triggers. Type:
     ```shell
     scripts/startTriggers.sh localhost 6865 .daml/dist/*.dar
+    ```
+4. Once the sandbox has started, start the automation logic by starting triggers. Type:
+    ```shell
+    cd ui
+    yarn start
     ```
 
 ### Stopping the App
 
 #### Stopping Dockerized Run
-1. Stop the Docker containers or triggers by pressing **Ctrl+C**. (Alternatively, you can also stop it by typing `docker-compose down`.)
+1. Stop the Docker containers by pressing **Ctrl+C**.
+1. If you want to cleanup Docker for a fresh restart, type
+    ```
+    docker-compose down --volumes --remove-orphans
+    ```
 
 #### Stopping Standalone Run
 1. Stop the triggers by pressing **Ctrl+C**.
@@ -109,7 +126,7 @@ _**Note:** This demo is designed to show successful conclusion of the supply cha
   <tr>
    <td>Transport Company
    </td>
-   <td>Transport Company is in possession of goods during transportation. It notifies relevant participants of any changes in the status of the delivery. 
+   <td>Transport Company is in possession of goods during transportation. It notifies relevant participants of any changes in the status of the delivery.
    </td>
   </tr>
 </table>
@@ -120,7 +137,7 @@ The Supply Chain application includes the following steps:
 
 1. **Market Setup:** The application starts with an automated market setup process. Participants and their roles are created, and relationships are set up.
 
-2. **Quote Request:** Buyer requests a trade quote from Seller for the price and delivery date for a quantity of goods. Seller reviews the quote request and starts the pricing and delivery collection process. 
+2. **Quote Request:** Buyer requests a trade quote from Seller for the price and delivery date for a quantity of goods. Seller reviews the quote request and starts the pricing and delivery collection process.
 
     Supplier receives notification of the new trade quote request from Seller.
 
@@ -160,101 +177,95 @@ During Navigator startup, the basic buyer-seller relationship and other referenc
 To request a quote:
 
 1. Log in as Buyer.
-2. Choose the **Seller Relationships** tab.
-3. Click on the relationship contract.
-4. Select the **BuyerSellerRelationship_SendQuoteRequest** choice.
-5. Click on **Add new element**
-6. Fill in the parameters:
+1. Choose the **Buyer Seller Relationships** tab.
+1. Select the relationship contract.
+1. Click on the **Send Quote Request** choice.
+1. Click **Add**.
+1. Fill in the parameters:
     * productName: the name of the ordered product (_must match an existing inventory item_, see them on the Inventory page logged in as Supplier)
     * quantity: the ordered quantity
     * deliveryFrom: the start of the acceptable delivery period
     * deliveryTo: the end of the acceptable delivery period
-7. More products can be added by clicking on **Add new element**
-8. Choose **Submit**.
+1. More products can be added by clicking on **Add**.
+1. Choose **Okay**.
 
 #### Accepting the Quote Request
 
 1. Log in as Seller.
-2. Choose the **Quote Requests** tab.
-3. Click on the contract.
-4. Select the **QuoteRequest_Accept** choice.
-5. Fill in the parameter:
+1. Choose the **Quote Requests** tab.
+1. Select the contract.
+1. Fill in the parameter of the choice **Accept**:
     * workflowId: unique identifier of the order workflow
-6. Choose **Submit**.
+1. Click on **Accept**.
 
 #### Sending the Request to the Supplier
 
 1. Log in as Seller.
-2. Choose the **Accepted Quote Request** tab.
-3. Click on the contract.
-4. Select the **QuoteRequestAccepted_SendToSupplier** choice.
-5. Fill in the parameter:
+1. Choose the **Accepted Quote Request** tab.
+1. Select the contract.
+1. Fill in the parameter of the choice **Send To Supplier**:
     * supplier: the Supplier party
-6. Choose **Submit**.
+1. Click on **Send To Supplier**.
 
 #### Accepting the Supply Invitation
 
 1. Log in as Supplier.
-2. Choose the **Supply Invitation** tab.
-3. Click on the contract.
-4. Select the **QuoteRequestSupplyInvitation_Accept** choice.
-5. Choose **Submit**.
+1. Choose the **Supply Invitations** tab.
+1. Select the contract.
+1. Click on **Accept**.
 
 ### Preparing the Supply
 
 #### Starting Price Collection
 
 1. Log in as Supplier.
-2. Choose the **Supply Request** tab.
-3. Click on the contract.
-4. Select the **SupplyRequest_StartPriceCollection** choice.
-5. Fill in the parameters:
+1. Choose the **Supply Request** tab.
+1. Select the contract.
+1. Click **Start Price Collection**.
+1. Fill in the parameters:
     * warehouses: list of Warehouse parties from which to collect the products
     * transportCompanies: list of Transport Companies from whom to request transport quotes
-6. Choose **Submit**.
+1. Choose **Okay**.
 
 Note that Supplier can see the available quantity of goods in each warehouse, as they are owned by Supplier.
 
 #### Sending Transport Quotes
 
 1. Log in as any Transport Company (TransportCompany1, TransportCompany2).
-2. Choose the **Transport Quote Request** tab.
-3. Click on the contract.
-4. Select the **TransportQuoteRequest_Accept** choice.
-5. Fill in the parameters:
+1. Choose the **Transport Quote Request** tab.
+1. Select the contract.
+1. Click **Accept**.
+1. Fill in the parameters:
     * transportableQuantity: the quantity this transport company is able to deliver from the given location (Warehouse)
     * price: the total price of transportableQuantity
     * pickUpDate: date of pickup at Warehouse
     * deliveryDate: date of delivery to Buyer
-6. Choose **Submit**.
+1. Choose **Okay**.
 
 #### Choosing the Best Delivery Plan
 
 1. Log in as Supplier.
-2. Choose the **Pending Quote Request** tab.
-3. Click on the contract.
-4. Select the **TransportQuoteRequestPending_ChooseTransport** choice.
-5. Choose **Submit**.
+1. Choose the **Pending Transport Quote Request** tab.
+1. Select the contract.
+1. Click on **ChooseTransport**.
 
 #### Sending the Aggregated Quote to Seller
 
 1. Log in as Supplier.
-2. Choose the **Aggregated Pending Quote** tab.
-3. Click on the contract.
-4. Select the **AggregatedQuotePending_SendQuoteToSeller** choice.
-5. Choose **Submit**.
+1. Choose the **Pending Aggregated Quote** tab.
+1. Select the contract.
+1. Click **Send To Seller**.
 
 ### Preparing and Sending the Quote
 
 #### Adding Margin
 
 1. Log in as Seller.
-2. Choose the **Aggregated Quote** tab.
-3. Click on the contract.
-4. Select the **AggregatedQuote_AddMargin** choice.
-5. Fill in the parameter:
+1. Choose the **Aggregated Quotes** tab.
+1. Select the contract.
+1. Fill in the parameter of the choice **Add Margin**:
     * margin: a decimal number describing the margin (e.g. `0.1` means 10% margin)
-6. Choose **Submit**.
+1. Click on **Add Margin**.
 
 _Note:_ You cannot click on the contract if you did not start the triggers. In this case you need to start over, and make sure the triggers run.
 
@@ -263,70 +274,62 @@ _Note:_ You cannot click on the contract if you did not start the triggers. In t
 #### Accepting the Quote
 
 1. Log in as Buyer.
-2. Choose the **Received Quote** tab.
-3. Click on the contract.
-4. Select the **QuoteForBuyer_Accept** choice.
-5. Choose **Submit**.
+1. Choose the **Quotes** tab.
+1. Select the contract.
+1. Click on **Accept**.
 
 #### Accepting the Order
 
 1. Log in as Seller.
-2. Choose the **Confirmed Order** tab.
-3. Click on the contract.
-4. Select the **ConfirmedOrder_StartDelivery** choice.
-5. Choose **Submit**.
+1. Choose the **Order** tab.
+1. Select the contract.
+1. Click on the **StartDelivery** choice.
 
 #### Pick Up Products
 
 1. Log in as a Transport Company (TransportCompany1, TransportCompany2).
-2. Choose the **Delivery Instruction** tab.
-3. Click on the contract.
-4. In a real system we could check if it is the pickup date of the delivery instruction, but we don't require this for sake of the demo.
-5. Select the **DeliveryInstruction_PickUp** choice.
-6. Choose **Submit**.
+1. Choose the **Delivery Instruction** tab.
+1. Select the contract.
+1. In a real system we could check if it is the pickup date of the delivery instruction, but we don't require this for sake of the demo.
+1. Click on **PickUp**.
 
 #### Acknowledge Pickup
 
 1. Log in as a Warehouse (Warehouse1, Warehouse2).
-2. Choose the **Pickup Request** tab.
-3. Click on the contract.
-4. Select the **PickUpRequest_Accept** choice.
-5. Choose **Submit**.
+1. Choose the **Pickup Request** tab.
+1. Select the contract.
+1. Click on **Accept**.
 
 #### Start Delivery
 
 1. Log in as a Transport Company (TransportCompany1, TransportCompany2).
-2. Choose the **Pending Transport** tab.
-3. Click on the contract.
-4. Select the **TransportPending_Deliver** choice.
-5. Choose **Submit**.
+1. Choose the **Pending Transport** tab.
+1. Select the contract.
+1. Click on **Deliver**.
 
 #### Acknowledge Delivery
 
 1. Log in as Buyer.
-2. Choose the **Delivery** tab.
-3. Click on the contract.
-4. In a real system we could check if it is the delivery date, but we don't require this for sake of the demo.
-5. Select the **Delivery_Acknowledge** choice.
-6. Choose **Submit**.
+1. Choose the **Delivery** tab.
+1. Select the contract.
+1. In a real system we could check if it is the delivery date, but we don't require this for sake of the demo.
+1. Click on **Acknowledge**.
 
 ### Payment
 
 #### Supplier Accepts the Payment
 
 1. Log in as Supplier.
-2. Choose the **Delivery Payment** tab.
-3. Click on the contract.
-4. Select the **DeliveryPayment_Accept** choice.
-5. Choose **Submit**.
+1. Choose the **Delivery Payment** tab.
+1. Select the contract.
+1. Click on **Accept**.
 
 #### Pay the Warehouses and Transport Companies
 
 1. Log in as Supplier.
-2. Choose the **Supplier Payment** tab.
-3. Click on the contract.
-4. Select the **DeliverySupplierPayment_Pay** choice.
-5. Choose **Submit**.
+1. Choose the **Supplier Payment** tab.
+1. Select the contract.
+1. Click on **Pay**.
 
 
 CONFIDENTIAL © 2019 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.

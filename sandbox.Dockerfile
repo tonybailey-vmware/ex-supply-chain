@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-ARG sdk_vsn=1.8.0
+ARG sdk_vsn=1.7.0
 
 FROM digitalasset/daml-sdk:${sdk_vsn} AS source
 
@@ -17,6 +17,7 @@ FROM source
 
 EXPOSE 6865
 EXPOSE 7500
+EXPOSE 7575
 
 ENTRYPOINT daml start \
   --sandbox-option="--address=0.0.0.0" \
@@ -24,5 +25,5 @@ ENTRYPOINT daml start \
 # Cannot explicitly specify, because of: https://github.com/digital-asset/daml/issues/5777
 # Relying on default port behaviour as of now.
 #  --navigator-option="--port=7500" \
-  --open-browser=no \
-  --json-api-port=none
+  --json-api-option="--address=0.0.0.0" \
+  --open-browser=no
