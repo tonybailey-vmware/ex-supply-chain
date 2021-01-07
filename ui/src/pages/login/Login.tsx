@@ -2,15 +2,25 @@
  * Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useMemo } from "react";
-import { Grid, CircularProgress, Typography, Button, Fade, Select, MenuItem, FormControl, InputLabel } from "@material-ui/core";
-import { withRouter, RouteComponentProps } from "react-router-dom";
+import React, {useMemo, useState} from "react";
+import {
+  Button,
+  CircularProgress,
+  Fade,
+  FormControl,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Select,
+  Typography
+} from "@material-ui/core";
+import {RouteComponentProps, withRouter} from "react-router-dom";
 import useStyles from "./styles";
 import logo from "./logo.svg";
-import { useUserDispatch, loginUser } from "../../context/UserContext";
-import { createToken, httpBaseUrl } from "../../config";
+import {loginUser, useUserDispatch} from "../../context/UserContext";
+import {createToken, httpBaseUrl} from "../../config";
 import rp from "request-promise";
-import { addSpacesBetweenWords } from "../../components/Util";
+import {addSpacesBetweenWords} from "../../components/Util";
 
 function addPath(baseUrl: string, path: string): string {
   const pathWithoutLeadingSlash = path.startsWith("/") ? path.slice(1) : path;
@@ -29,9 +39,7 @@ async function getParties(): Promise<any[]> {
       }
   };
   const response = await rp(options).catch(e => console.error(e));
-  const k = JSON.parse(response);
-  debugger;
-  const { result } = k;
+  const { result } = JSON.parse(response);
 
   return result;
 }
