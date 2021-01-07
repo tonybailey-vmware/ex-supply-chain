@@ -39,3 +39,10 @@ export function shorten(text: any, maxLength: number = 40): any {
   }
   return text;
 }
+
+export function addTrailingSlashIfNeeded(url : string): string {
+  if (url.endsWith("/")) {
+      return url;
+  }
+  return `${url}/`;
+}

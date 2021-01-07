@@ -13,16 +13,17 @@ import rp from "request-promise";
 import { addSpacesBetweenWords } from "../../components/Util";
 
 function addPath(baseUrl: string, path: string): string {
+  const pathWithoutLeadingSlash = path.startsWith("/") ? path.slice(1) : path;
   return baseUrl.endsWith('/')
-      ? `${baseUrl}${path}`
-      : `${baseUrl}/${path}`;
+      ? `${baseUrl}${pathWithoutLeadingSlash}`
+      : `${baseUrl}/${pathWithoutLeadingSlash}`;
 }
 
 async function getParties(): Promise<any[]> {
   const defaultUser = "Buyer";
   const token = createToken(defaultUser);
   const options = {
-      url: addPath(httpBaseUrl, 'v1/parties'),
+      url: addPath(httpBaseUrl, '/v1/parties'),
       headers: {
           Authorization: `Bearer ${token}`
       }
