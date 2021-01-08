@@ -1,0 +1,17 @@
+{
+    "default_participant": {
+        "host": "https://api.projectdabl.com/data/gun3ssevrbadruf3",
+        "port": 443,
+        "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImRhYmwtMjMyZWRlOGItYjEzOC00NDIwLTk0YWUtNjc1YjgwNzcyNmRjIn0.eyJpc3MiOiJwcm9qZWN0ZGFibC5jb20vbG9naW4iLCJzdWIiOiJnb29nbGUtYXBwc3xnYWJvckBkaWdpdGFsYXNzZXQuY29tIiwiZXhwIjoxNjA3MTUyNTc3LCJodHRwczovL2RhbWwuY29tL2xlZGdlci1hcGkiOnsiYWN0QXMiOlsibGVkZ2VyLXBhcnR5LTBiMGY1MWZjLTFiZjktNDgxMy05YTAxLWZiYTdhYWEzOGE2OCJdLCJhcHBsaWNhdGlvbklkIjoiREFCTCIsImxlZGdlcklkIjoiZ3VuM3NzZXZyYmFkcnVmMyJ9LCJvd25lciI6InVzZXItZ3JhbnQtZjJlYjhlNDQtODBlNC00NzU0LTlhZTAtYWQzOTM0MTRmYjBjIiwicGFydHlOYW1lIjoiQXVjdGlvbkFnZW50IiwicmlnaHRzIjpbInJlYWQiLCJ3cml0ZTpjcmVhdGUiLCJ3cml0ZTpleGVyY2lzZSJdfQ.BpMZ1Pt22GKXrAu6btyYqLFI7bHYyYF4eOSX_LhD2ykcY6tyE38h6Ej8x8gq3moMcTeiGWm9H6XzYdiYIK5BcMPKIUzV0gAQSPLE3lBOdLvNHm4R6aTObnOwNVIhgzB9my-_9_59CpfwT65sqa2l-vmxaYe0ilJzMqKl9jHcq3U"
+    },
+    "participants": {
+        "operator": {
+            "host": "https://api.projectdabl.com/data/gun3ssevrbadruf3",
+            "port": 443,
+            "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6ImRhYmwtMjMyZWRlOGItYjEzOC00NDIwLTk0YWUtNjc1YjgwNzcyNmRjIn0.eyJpc3MiOiJwcm9qZWN0ZGFibC5jb20vbG9naW4iLCJzdWIiOiJnb29nbGUtYXBwc3xnYWJvckBkaWdpdGFsYXNzZXQuY29tIiwiZXhwIjoxNjA3MTUyNTc3LCJodHRwczovL2RhbWwuY29tL2xlZGdlci1hcGkiOnsiYWN0QXMiOlsibGVkZ2VyLXBhcnR5LTNiNjg2Nzg0LWRkMjktNDViMi1iODhjLWRhZTRjMDZlNjQwMCJdLCJhcHBsaWNhdGlvbklkIjoiREFCTCIsImxlZGdlcklkIjoiZ3VuM3NzZXZyYmFkcnVmMyJ9LCJvd25lciI6InVzZXItZ3JhbnQtZjJlYjhlNDQtODBlNC00NzU0LTlhZTAtYWQzOTM0MTRmYjBjIiwicGFydHlOYW1lIjoiT3BlcmF0b3IiLCJyaWdodHMiOlsicmVhZCIsIndyaXRlOmNyZWF0ZSIsIndyaXRlOmV4ZXJjaXNlIl19.XjJTBP81yvMZbwIoZ3TQ_fIS15YvinSYVumywtWlp8jQgs3230gtdLI2CPz_U8mHy8_EWjmmKcmWGOHdo6JECH8oH63UfauydIUP5WP1cnX6J90jfkM7sLsiqHUsCkwV1oiJnk3b-6qBtx50LqychzItCGdUFfP6fKs_y4zwFyc"
+        }
+    },
+    "party_participants": {
+        "ledger-party-3b686784-dd29-45b2-b88c-dae4c06e6400": "operator"
+    }
+}

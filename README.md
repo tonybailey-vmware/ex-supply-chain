@@ -83,6 +83,39 @@ Reset the application by following these steps:
 1.  Stop the app by following the steps in [Stopping the App](#stopping-the-app) section.
 2.  Start the app in [Docker](#start-app-with-docker) or [Standalone](#start-app-in-standalone) by following the steps in the relevant section.
 
+## Working with DABL
+
+1. As a first step, build the whole project:
+```
+make clean build
+```
+
+2. Upload the DARs to DABL (Deployments tab / Upload file, two files `target/*.dar`)
+
+3. Add the parties to DABL.
+    - See the example `parties.json` file for a list of parties.
+    - Update `parties.json` file with actual party IDs from DABL (Users tab).
+    - Download `participants.json` (Ledger settings tab).
+
+4. Run the market setup:
+```
+daml script \
+  --participant-config participants.json \
+  --json-api \
+  --dar target/app.dar \
+  --script-name DA.RefApps.SupplyChain.LedgerSetupScript:initializeWithParties \
+  --input-file parties.json
+```
+
+5. Run the triggers from the DABL UI:
+```
+TODO
+
+```
+
+6. Run `make build-ui`. Copy `participants.json` into `ui/src` with `cp participants.json ui/src/`. Run `yarn build` in `ui`. Then run `zip -r supplychain.zip build/`. Upload `supplychain.zip` to DABL to deploy the UI.
+
+
 ## User Guide
 This User Guide will take you step-by-step through the whole supply chain process described in the Overview.
 

@@ -1,0 +1,9 @@
+{
+    "buyer": "ledger-party-d4eea35a-833e-44ba-a322-9c82fd3f5e9c",
+    "seller": "ledger-party-5978aed6-f7f0-46bd-9d58-3953851fdad8" ,
+    "supplier": "ledger-party-8ca03db3-b535-4b02-ba74-4be7d966b87a" ,
+    "warehouse1": "ledger-party-0b0f51fc-1bf9-4813-9a01-fba7aaa38a68" ,
+    "warehouse2": "ledger-party-c22e92c3-256e-4cd2-a415-87365cac1f45" ,
+    "transportCompany1": "ledger-party-cb628712-e195-4f92-b7b1-5b5ef2087101",
+    "transportCompany2": "ledger-party-ea104968-ee64-4681-95b8-af720d1ef4e0"
+}
