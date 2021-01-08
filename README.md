@@ -109,8 +109,18 @@ daml script \
 
 5. Run the triggers from the DABL UI:
 ```
-TODO
+Seller
+DA.RefApps.SupplyChain.Triggers.AggregatedQuoteTrigger:trigger
+DA.RefApps.SupplyChain.Triggers.DeliveryCompleteTrigger:trigger
 
+Warehouse1
+DA.RefApps.SupplyChain.Triggers.InventoryQuoteRequestTrigger:trigger
+
+Warehouse2
+DA.RefApps.SupplyChain.Triggers.InventoryQuoteRequestTrigger:trigger
+
+Supplier
+DA.RefApps.SupplyChain.Triggers.CalculateAggregatedQuoteTrigger:trigger
 ```
 
 6. Run `make build-ui`. Copy `participants.json` into `ui/src` with `cp participants.json ui/src/`. Run `yarn build` in `ui`. Then run `zip -r supplychain.zip build/`. Upload `supplychain.zip` to DABL to deploy the UI.
