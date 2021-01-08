@@ -1,25 +1,34 @@
 .PHONY: build
-build: build-dar build-jscodegen build-ui
+build: build-dar build-triggers-dar build-jscodegen build-ui
 
 
 ### DAR ###
 
-DAR=target/app.dar
+MAIN_DAR=target/app.dar
 DAML_SRC=$(shell find src/ -name '*.daml')
 
-$(DAR): $(DAML_SRC) daml.yaml
+$(MAIN_DAR): $(DAML_SRC) daml.yaml
 	daml build --output $@
 
 .PHONY: build-dar
-build-dar: $(DAR)
+build-dar: $(MAIN_DAR)
 
+
+TRIGGERS_DAR=target/triggers.dar
+TRIGGERS_DAML_SRC=$(shell find triggers/src/ -name '*.daml')
+
+$(TRIGGERS_DAR): $(TRIGGERS_DAML_SRC) triggers/daml.yaml
+	daml build --project-root triggers --output $@
+
+.PHONY: build-dar
+build-triggers-dar: $(TRIGGERS_DAR)
 
 ### JS Codegen ###
 
 JS_CODEGEN_DIR=target/daml.js
 JS_CODEGEN_ARTIFACT=$(JS_CODEGEN_DIR)/supplychain-1.0.0/package.json
 
-$(JS_CODEGEN_ARTIFACT): $(DAR)
+$(JS_CODEGEN_ARTIFACT): $(MAIN_DAR)
 	daml codegen js -o $(JS_CODEGEN_DIR) $<
 
 .PHONY: build-jscodegen
