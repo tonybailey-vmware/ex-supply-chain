@@ -14,10 +14,12 @@ USER daml
 
 WORKDIR /home/daml
 
+COPY --chown=daml daml.yaml .
+COPY --chown=daml src src
 COPY --chown=daml scripts scripts
+RUN daml build --output app.dar
 
 ENV JAVA_TOOL_OPTIONS -Xmx128m
 
-# needs deploy/ mounted
 ENTRYPOINT scripts/waitForLedger.sh "$LEDGER_HOST" "$LEDGER_PORT" && \
-           scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" deploy/app.dar
+           scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" app.dar

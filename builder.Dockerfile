@@ -29,6 +29,8 @@ RUN scripts/install-node.sh
 RUN scripts/install-yarn.sh
 USER daml
 
-RUN make deploy
+RUN make build
+RUN mkdir deploy
+RUN cp target/app.dar deploy
 
 ENTRYPOINT echo "Build artifacts has been synced to shared volume:" && ls -l deploy/
