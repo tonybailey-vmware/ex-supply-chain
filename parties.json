@@ -1,9 +1,9 @@
 {
-    "buyer": "ledger-party-d4eea35a-833e-44ba-a322-9c82fd3f5e9c",
-    "seller": "ledger-party-5978aed6-f7f0-46bd-9d58-3953851fdad8" ,
-    "supplier": "ledger-party-8ca03db3-b535-4b02-ba74-4be7d966b87a" ,
-    "warehouse1": "ledger-party-0b0f51fc-1bf9-4813-9a01-fba7aaa38a68" ,
-    "warehouse2": "ledger-party-c22e92c3-256e-4cd2-a415-87365cac1f45" ,
-    "transportCompany1": "ledger-party-cb628712-e195-4f92-b7b1-5b5ef2087101",
-    "transportCompany2": "ledger-party-ea104968-ee64-4681-95b8-af720d1ef4e0"
+    "buyer": "ledger-party-990c5776-7b1a-4e8c-bee1-b0a6085f1633",
+    "seller": "ledger-party-27a25345-4b78-4113-868f-d3f17939a860" ,
+    "supplier": "ledger-party-27a25345-4b78-4113-868f-d3f17939a860" ,
+    "warehouse1": "ledger-party-b2ec93eb-e088-405e-8f7d-42683cc42425" ,
+    "warehouse2": "ledger-party-057e08c3-8f85-42b0-8a43-540ad977def1" ,
+    "transportCompany1": "ledger-party-98195a8d-0009-4d2f-98d5-095e0f789204",
+    "transportCompany2": "ledger-party-c6995d4f-d4d0-4b30-bc63-ca3c339d6536"
 }

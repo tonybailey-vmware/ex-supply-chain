@@ -123,7 +123,13 @@ Supplier
 DA.RefApps.SupplyChain.Triggers.CalculateAggregatedQuoteTrigger:trigger
 ```
 
-6. Run `make build-ui`. Copy `participants.json` into `ui/src` with `cp participants.json ui/src/`. Run `yarn build` in `ui`. Then run `zip -r supplychain.zip build/`. Upload `supplychain.zip` to DABL to deploy the UI.
+6. Run `make build-ui`. Copy `participants.json` into `ui/src` with `cp participants.json ui/src/`. Then run
+```
+export REACT_APP_HTTP_BASE_URL=https://wllr6209jx7tgn3g.projectdabl.com
+export REACT_APP_WS_BASE_URL=wss://wllr6209jx7tgn3g.projectdabl.com
+yarn build
+```
+in the `ui` folder. Then run `zip -r supplychain.zip build/`. Upload `supplychain.zip` to DABL to deploy the UI.
 
 
 ## User Guide

@@ -25,7 +25,7 @@ export const dablLoginUrl = loginUrl.join('.') + (window.location.port ? ':' + w
 //     return jwt.sign({ "https://daml.com/ledger-api": { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } }, "secret")
 // }
 
-export function createToken(party: string): string | undefined {
+export function createToken(party: string): string {
     if (process.env.NODE_ENV === 'development') {
         console.log("Using token generated token.");
         return jwt.sign({ "https://daml.com/ledger-api": { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } }, "secret");
@@ -33,7 +33,7 @@ export function createToken(party: string): string | undefined {
         console.log("Using token from participant file.");
         const participantMap = new Map(Object.entries(participants.participants));
         const participantInfo = participantMap.get(lowerCaseFirst(party));
-        return participantInfo?.access_token;
+        return participantInfo?.access_token || "undefined";
     }
 }
 

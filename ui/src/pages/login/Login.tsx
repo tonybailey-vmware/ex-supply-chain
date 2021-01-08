@@ -83,7 +83,6 @@ function Login(props : RouteComponentProps) {
   var [isLoading, setIsLoading] = useState(false);
   var [error, setError] = useState(false);
   var [loginValue, setLoginValue] = useState("");
-  const parties = new SortedPartyNames().getParties();
 
   return (
     <Grid container className={classes.container}>
@@ -119,10 +118,13 @@ function Login(props : RouteComponentProps) {
                   }}
                   fullWidth
                 >
-                  {
-                    parties
-                      .map(p => <MenuItem key={p.identifier} value={p.identifier}>{p.displayName}</MenuItem>)
-                  }
+                  <MenuItem value={"Buyer"}>Buyer</MenuItem>
+                  <MenuItem value={"Seller"}>Seller</MenuItem>
+                  <MenuItem value={"Warehouse1"}>Warehouse1</MenuItem>
+                  <MenuItem value={"Warehouse2"}>Warehouse2</MenuItem>
+                  <MenuItem value={"Supplier"}>Supplier</MenuItem>
+                  <MenuItem value={"TransportCompany1"}>TransportCompany1</MenuItem>
+                  <MenuItem value={"TransportCompany2"}>TransportCompany2</MenuItem>
                 </Select>
               </FormControl>
               <div className={classes.formButtons}>

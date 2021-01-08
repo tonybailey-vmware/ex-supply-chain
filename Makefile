@@ -18,7 +18,7 @@ TRIGGERS_DAR=target/triggers.dar
 TRIGGERS_DAML_SRC=$(shell find triggers/src/ -name '*.daml')
 
 $(TRIGGERS_DAR): $(TRIGGERS_DAML_SRC) triggers/daml.yaml
-	daml build --project-root triggers --output $@
+	daml build --project-root triggers --output ../$@
 
 .PHONY: build-dar
 build-triggers-dar: $(TRIGGERS_DAR)
