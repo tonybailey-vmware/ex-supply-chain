@@ -22,7 +22,7 @@ dependencies:
   - daml-stdlib
   - daml-script
   - daml-trigger
-  - ../target/app.dar
+  - ../target/supplychain.dar
 build-options:
   - '--ghc-option'
   - '-Werror'

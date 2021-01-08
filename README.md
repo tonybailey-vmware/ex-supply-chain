@@ -102,7 +102,7 @@ make clean build
 daml script \
   --participant-config participants.json \
   --json-api \
-  --dar target/app.dar \
+  --dar target/supplychain.dar \
   --script-name DA.RefApps.SupplyChain.LedgerSetupScript:initializeWithParties \
   --input-file parties.json
 ```

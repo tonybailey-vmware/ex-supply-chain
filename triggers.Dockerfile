@@ -19,7 +19,7 @@ COPY --chown=daml src src
 COPY --chown=daml scripts scripts
 COPY --chown=daml triggers triggers
 RUN mkdir target
-RUN daml build --output /home/daml/target/app.dar
+RUN daml build --output /home/daml/target/supplychain.dar
 RUN daml build --project-root triggers --output /home/daml/target/triggers.dar
 
 ENV JAVA_TOOL_OPTIONS -Xmx128m

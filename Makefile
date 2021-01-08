@@ -4,7 +4,7 @@ build: build-dar build-triggers-dar build-jscodegen build-ui
 
 ### DAR ###
 
-MAIN_DAR=target/app.dar
+MAIN_DAR=target/supplychain.dar
 DAML_SRC=$(shell find src/ -name '*.daml')
 
 $(MAIN_DAR): $(DAML_SRC) daml.yaml
