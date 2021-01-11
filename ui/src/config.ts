@@ -10,8 +10,8 @@ import participants from './participants.json';
 export const httpBaseUrl = addTrailingSlashIfNeeded(process.env.REACT_APP_HTTP_BASE_URL as string);
 export const wsBaseUrl = addTrailingSlashIfNeeded(process.env.REACT_APP_WS_BASE_URL as string);
 
-console.log(`JSON API proxy: ${httpBaseUrl}`);
-console.log(`JSON API WS proxy: ${wsBaseUrl}`);
+console.log(`JSON API: ${httpBaseUrl}`);
+console.log(`JSON API WS: ${wsBaseUrl}`);
 
 export const ledgerId = "supply-chain";
 
