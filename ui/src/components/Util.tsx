@@ -46,3 +46,8 @@ export function addTrailingSlashIfNeeded(url : string): string {
   }
   return `${url}/`;
 }
+
+export function capitalize(s : string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+

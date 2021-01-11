@@ -20,13 +20,10 @@ let host = window.location.host.split('.')
 let loginUrl = host.slice(1)
 loginUrl.unshift('login')
 export const dablLoginUrl = loginUrl.join('.') + (window.location.port ? ':' + window.location.port : '') + '/auth/login?ledgerId=' + ledgerId;
-
-// export function createToken(party : string): string {
-//     return jwt.sign({ "https://daml.com/ledger-api": { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } }, "secret")
-// }
+export const isDevMode = process.env.NODE_ENV === 'development'
 
 export function createToken(party: string): string {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevMode) {
         console.log("Using token generated token.");
         return jwt.sign({ "https://daml.com/ledger-api": { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } }, "secret");
     } else {
