@@ -20,7 +20,9 @@ import logo from "./logo.svg";
 import {loginUser, useUserDispatch} from "../../context/UserContext";
 import {createToken, httpBaseUrl} from "../../config";
 import rp from "request-promise";
-import {addSpacesBetweenWords} from "../../components/Util";
+import {addSpacesBetweenWords, capitalize} from "../../components/Util";
+import { isDevMode } from "../../config"
+import participants from "../../participants.json";
 
 function addPath(baseUrl: string, path: string): string {
   const pathWithoutLeadingSlash = path.startsWith("/") ? path.slice(1) : path;
@@ -83,7 +85,6 @@ function Login(props : RouteComponentProps) {
   var [isLoading, setIsLoading] = useState(false);
   var [error, setError] = useState(false);
   var [loginValue, setLoginValue] = useState("");
-  const parties = new SortedPartyNames().getParties();
 
   return (
     <Grid container className={classes.container}>
@@ -119,9 +120,18 @@ function Login(props : RouteComponentProps) {
                   }}
                   fullWidth
                 >
-                  {
-                    parties
-                      .map(p => <MenuItem key={p.identifier} value={p.identifier}>{p.displayName}</MenuItem>)
+                  { isDevMode ?
+                       [<MenuItem value={"Buyer"}>Buyer</MenuItem>,
+                        <MenuItem value={"Seller"}>Seller</MenuItem>,
+                        <MenuItem value={"Warehouse1"}>Warehouse1</MenuItem>,
+                        <MenuItem value={"Warehouse2"}>Warehouse2</MenuItem>,
+                        <MenuItem value={"Supplier"}>Supplier</MenuItem>,
+                        <MenuItem value={"TransportCompany1"}>TransportCompany1</MenuItem>,
+                        <MenuItem value={"TransportCompany2"}>TransportCompany2</MenuItem>]
+                    : Object.entries(participants.party_participants)
+                            .map(p =>
+                              <MenuItem value={capitalize(p[1])}>{capitalize(p[1])}</MenuItem>
+                              )
                   }
                 </Select>
               </FormControl>

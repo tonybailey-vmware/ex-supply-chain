@@ -1,0 +1,30 @@
+#
+# Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+sdk-version: 1.7.0
+name: supplychain-triggers
+source: src/main/daml
+sandbox-options:
+  - --ledgerid=supply-chain
+parties:
+  - Buyer
+  - Seller
+  - Supplier
+  - Warehouse1
+  - Warehouse2
+  - TransportCompany1
+  - TransportCompany2
+version: 1.0.0
+dependencies:
+  - daml-prim
+  - daml-stdlib
+  - daml-script
+  - daml-trigger
+  - ../target/supplychain.dar
+build-options:
+  - '--ghc-option'
+  - '-Werror'
+  - '--ghc-option'
+  - '-Wunused-binds'

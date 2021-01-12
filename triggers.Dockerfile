@@ -17,9 +17,11 @@ WORKDIR /home/daml
 COPY --chown=daml daml.yaml .
 COPY --chown=daml src src
 COPY --chown=daml scripts scripts
-RUN daml build --output app.dar
+COPY --chown=daml triggers triggers
+RUN daml build --output /home/daml/target/supplychain.dar
+RUN daml build --project-root triggers --output /home/daml/target/triggers.dar
 
 ENV JAVA_TOOL_OPTIONS -Xmx128m
 
 ENTRYPOINT scripts/waitForLedger.sh "$LEDGER_HOST" "$LEDGER_PORT" && \
-           scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" app.dar
+           scripts/startTriggers.sh "$LEDGER_HOST" "$LEDGER_PORT" target/triggers.dar

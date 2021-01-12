@@ -57,6 +57,7 @@ import org.junit.rules.TestRule;
 public class SupplychainIT {
 
   private static final Path RELATIVE_DAR_PATH = Paths.get("./target/supplychain.dar");
+  private static final Path RELATIVE_TRIGGER_DAR_PATH = Paths.get("./target/triggers.dar");
   private static final String TEST_MODULE = "DA.RefApps.SupplyChain.LedgerSetupScript";
   private static final String TEST_SCRIPT = "initialize";
 
@@ -83,7 +84,7 @@ public class SupplychainIT {
   private final Builder trigger =
       Trigger.builder()
           .ledgerPort(sandbox::getSandboxPort)
-          .dar(RELATIVE_DAR_PATH)
+          .dar(RELATIVE_TRIGGER_DAR_PATH)
           .ledgerHost("localhost");
 
   @Rule

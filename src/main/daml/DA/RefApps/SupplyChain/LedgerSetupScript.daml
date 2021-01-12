@@ -13,6 +13,16 @@ import DA.RefApps.SupplyChain.Inventory
 
 import Daml.Script
 
+data SupplyChainParties =
+  SupplyChainParties with
+    buyer : Party
+    seller : Party
+    supplier : Party
+    warehouse1 : Party
+    warehouse2 : Party
+    transportCompany1 : Party
+    transportCompany2 : Party
+
 data SetupData = SetupData with
     buyerRoleCid: ContractId BuyerSellerRelationship
     product01: OrderedProduct
@@ -32,9 +42,13 @@ initialize = do
   supplier <- allocate "Supplier"
   warehouse1 <- allocate "Warehouse1"
   warehouse2 <- allocate "Warehouse2"
-  allocate "TransportCompany1"
-  allocate "TransportCompany2"
+  transportCompany1 <- allocate "TransportCompany1"
+  transportCompany2 <- allocate "TransportCompany2"
 
+  initializeWithParties $ SupplyChainParties with ..
+
+initializeWithParties: SupplyChainParties -> Script ()
+initializeWithParties SupplyChainParties{..} = do
   -- Predefined data
   let
     product01 = OrderedProduct "Product 1" 100 (date 2019 Dec 1) (date 2019 Dec 10)

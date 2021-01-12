@@ -12,9 +12,9 @@ WORKDIR /home/daml/
 COPY --chown=daml daml.yaml .
 COPY --chown=daml src src
 
-RUN daml build --output app.dar
+RUN daml build --output supplychain.dar
 
-RUN daml codegen js -o daml.js app.dar
+RUN daml codegen js -o daml.js supplychain.dar
 
 FROM node:alpine
 

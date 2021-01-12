@@ -56,7 +56,7 @@ Note: make sure to have at least 8 GBs of memory allocated to Docker.
     The navigator will automatically open in new browser tab at http://localhost:7500.
 3. Once the sandbox has started, start the automation logic by starting triggers. Type:
     ```shell
-    scripts/startTriggers.sh localhost 6865 .daml/dist/*.dar
+    scripts/startTriggers.sh localhost 6865 target/triggers.dar
     ```
 4. Once the sandbox has started, start the automation logic by starting triggers. Type:
     ```shell
@@ -81,7 +81,56 @@ Note: make sure to have at least 8 GBs of memory allocated to Docker.
 
 Reset the application by following these steps:
 1.  Stop the app by following the steps in [Stopping the App](#stopping-the-app) section.
-2.  Start the app in [Docker](#start-app-with-docker) or [Standalone](#start-app-in-standalone) by following the steps in the relevant section.
+2.  Start the app in [Docker](#start-app-with-docker) or [Standalone](#start-app-in-standalone-mode) by following the steps in the relevant section.
+
+## Working with DAML Hub
+
+1. As a first step, build the whole project:
+```
+make clean build
+```
+
+2. Upload the DARs to DAML Hub (Deployments tab / Upload file, two files `target/*.dar`)
+
+3. Add the parties to DAML Hub.
+    - See the example `parties.json` file for a list of parties.
+    - Update `parties.json` file with actual party IDs from DAML Hub (Users tab).
+    - Download `participants.json` (Ledger settings tab).
+
+4. Run the market setup:
+```
+daml script \
+  --participant-config participants.json \
+  --json-api \
+  --dar target/supplychain.dar \
+  --script-name DA.RefApps.SupplyChain.LedgerSetupScript:initializeWithParties \
+  --input-file parties.json
+```
+
+5. Run the triggers from the DAML Hub UI:
+```
+Seller
+DA.RefApps.SupplyChain.Triggers.AggregatedQuoteTrigger:trigger
+DA.RefApps.SupplyChain.Triggers.DeliveryCompleteTrigger:trigger
+
+Warehouse1
+DA.RefApps.SupplyChain.Triggers.InventoryQuoteRequestTrigger:trigger
+
+Warehouse2
+DA.RefApps.SupplyChain.Triggers.InventoryQuoteRequestTrigger:trigger
+
+Supplier
+DA.RefApps.SupplyChain.Triggers.CalculateAggregatedQuoteTrigger:trigger
+```
+
+6. Run `make build-ui`. Copy `participants.json` into `ui/src` with `cp participants.json ui/src/`. Then run
+```
+export REACT_APP_HTTP_BASE_URL=https://wllr6209jx7tgn3g.projectdabl.com
+export REACT_APP_WS_BASE_URL=wss://wllr6209jx7tgn3g.projectdabl.com
+yarn build
+```
+in the `ui` folder. Then run `zip -r supplychain.zip build/`. Upload `supplychain.zip` to DAML Hub to deploy the UI.
+
 
 ## User Guide
 This User Guide will take you step-by-step through the whole supply chain process described in the Overview.
