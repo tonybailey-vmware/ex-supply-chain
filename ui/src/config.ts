@@ -5,7 +5,7 @@
 
 import * as jwt from "jsonwebtoken";
 import { addTrailingSlashIfNeeded } from "./components/Util";
-import { convertPartiesJson } from '@daml/dabl-react';
+import { convertPartiesJson, PartyDetails } from '@daml/dabl-react';
 
 export const httpBaseUrl = addTrailingSlashIfNeeded(process.env.REACT_APP_HTTP_BASE_URL as string);
 export const wsBaseUrl = addTrailingSlashIfNeeded(process.env.REACT_APP_WS_BASE_URL as string);
@@ -13,14 +13,13 @@ export const wsBaseUrl = addTrailingSlashIfNeeded(process.env.REACT_APP_WS_BASE_
 console.log(`JSON API: ${httpBaseUrl}`);
 console.log(`JSON API WS: ${wsBaseUrl}`);
 
-export const ledgerId = "supply-chain";
-
 const applicationId = "supply-chain";
 let host = window.location.host.split('.')
 let loginUrl = host.slice(1)
 loginUrl.unshift('login')
-export const dablLoginUrl = loginUrl.join('.') + (window.location.port ? ':' + window.location.port : '') + '/auth/login?ledgerId=' + ledgerId;
 export const isDevMode = process.env.NODE_ENV === 'development'
+export const ledgerId = isDevMode ? "supply-chain" : host[0];
+export const dablLoginUrl = loginUrl.join('.') + (window.location.port ? ':' + window.location.port : '') + '/auth/login?ledgerId=' + ledgerId;
 
 export function createToken(party: string): string {
     if (isDevMode) {
@@ -38,7 +37,7 @@ export function createToken(party: string): string {
     }
 }
 
-export const handlePartiesLoad = async (parties: any) => {
+export const handlePartiesLoad = async (parties: PartyDetails[]) => {
     try {
         storeParties(parties);
     } catch (e) {
@@ -48,11 +47,11 @@ export const handlePartiesLoad = async (parties: any) => {
 
 const PARTIES_STORAGE_KEY = 'imported_parties';
 
-function storeParties(partiesJson: any) {
+function storeParties(partiesJson: PartyDetails[]) {
     localStorage.setItem(PARTIES_STORAGE_KEY, JSON.stringify(partiesJson));
 }
 
-export function retrieveParties(validateParties: any = false) {
+export function retrieveParties() {
     const partiesJson = localStorage.getItem(PARTIES_STORAGE_KEY);
 
     if (!partiesJson) {

@@ -97,10 +97,10 @@ Supplier
 DA.RefApps.SupplyChain.Triggers.CalculateAggregatedQuoteTrigger:trigger
 ```
 
-6. Run `make installui`. Then run in the `ui` folder:
+6. Run `make installui`. Then run in the `ui` folder (modify the URL, use yours):
 ```
-export REACT_APP_HTTP_BASE_URL=https://wllr6209jx7tgn3g.projectdabl.com
-export REACT_APP_WS_BASE_URL=wss://wllr6209jx7tgn3g.projectdabl.com
+export REACT_APP_HTTP_BASE_URL=https://isfesq2lvxg1y2v8.projectdabl.com
+export REACT_APP_WS_BASE_URL=wss://isfesq2lvxg1y2v8.projectdabl.com
 yarn build
 ```
 Then run `zip -r supplychain.zip build/`. Upload `supplychain.zip` to DAML Hub and deploy the UI. Follow "View site". Upload `parties.json` to the UI using the button on the login screen (Upload parties.json (tokens)). Receiving no error means you have succeeded.

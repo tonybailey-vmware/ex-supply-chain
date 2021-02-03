@@ -153,7 +153,7 @@ function Login(props : RouteComponentProps) {
         </div>
         <div style={{marginTop: "30%"}}>
           <div>
-            <label for="avatar">Upload parties.json (tokens):</label>
+            <label>Upload parties.json (tokens):</label>
           </div>
           <div>
             <DablPartiesInput
