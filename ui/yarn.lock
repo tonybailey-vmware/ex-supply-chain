@@ -1147,11 +1147,21 @@
 "@daml.js/supplychain-1.0.0@file:../target/daml.js/supplychain-1.0.0":
   version "1.7.0"
   dependencies:
-    "@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7" "file:../../../.cache/yarn/v6/npm-@daml-js-supplychain-1-0-0-1.7.0-567686c9-7dae-48b8-a007-608ba8d0583c-1611307263524/node_modules/@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7"
-    "@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662" "file:../../../.cache/yarn/v6/npm-@daml-js-supplychain-1-0-0-1.7.0-567686c9-7dae-48b8-a007-608ba8d0583c-1611307263524/node_modules/@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662"
+    "@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7" "file:../../../.cache/yarn/v6/npm-@daml-js-supplychain-1-0-0-1.7.0-16fa36d5-3e1a-46ee-bc2c-79cdaf1348b7-1612348345197/node_modules/@daml.js/40f452260bef3f29dede136108fc08a88d5a5250310281067087da6f0baddff7"
+    "@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662" "file:../../../.cache/yarn/v6/npm-@daml-js-supplychain-1-0-0-1.7.0-16fa36d5-3e1a-46ee-bc2c-79cdaf1348b7-1612348345197/node_modules/@daml.js/d14e08374fc7197d6a0de468c968ae8ba3aadbf9315476fd39071831f5923662"
     "@daml/ledger" "1.7.0"
     "@daml/types" "1.7.0"
     "@mojotech/json-type-validation" "^3.1.0"
+
+"@daml/dabl-react@file:./dabl-react":
+  version "1.0.0"
+  dependencies:
+    "@daml/react" "1.7.0"
+    "@daml/types" "1.7.0"
+    "@mojotech/json-type-validation" "^3.1.0"
+    "@types/jsonwebtoken" "^8.5.0"
+    jsonwebtoken "^8.5.1"
+    react "^16.12.0"
 
 "@daml/ledger@1.7.0":
   version "1.7.0"

@@ -18,11 +18,10 @@ import {RouteComponentProps, withRouter} from "react-router-dom";
 import useStyles from "./styles";
 import logo from "./logo.svg";
 import {loginUser, useUserDispatch} from "../../context/UserContext";
-import {createToken, httpBaseUrl} from "../../config";
+import {createToken, handlePartiesLoad, httpBaseUrl, ledgerId} from "../../config";
 import rp from "request-promise";
-import {addSpacesBetweenWords, capitalize} from "../../components/Util";
-import { isDevMode } from "../../config"
-import participants from "../../participants.json";
+import {addSpacesBetweenWords} from "../../components/Util";
+import { DablPartiesInput } from '@daml/dabl-react'
 
 function addPath(baseUrl: string, path: string): string {
   const pathWithoutLeadingSlash = path.startsWith("/") ? path.slice(1) : path;
@@ -120,19 +119,13 @@ function Login(props : RouteComponentProps) {
                   }}
                   fullWidth
                 >
-                  { isDevMode ?
-                       [<MenuItem value={"Buyer"}>Buyer</MenuItem>,
-                        <MenuItem value={"Seller"}>Seller</MenuItem>,
-                        <MenuItem value={"Warehouse1"}>Warehouse1</MenuItem>,
-                        <MenuItem value={"Warehouse2"}>Warehouse2</MenuItem>,
-                        <MenuItem value={"Supplier"}>Supplier</MenuItem>,
-                        <MenuItem value={"TransportCompany1"}>TransportCompany1</MenuItem>,
-                        <MenuItem value={"TransportCompany2"}>TransportCompany2</MenuItem>]
-                    : Object.entries(participants.party_participants)
-                            .map(p =>
-                              <MenuItem value={capitalize(p[1])}>{capitalize(p[1])}</MenuItem>
-                              )
-                  }
+                  <MenuItem id="party1" value={"Buyer"}>Buyer</MenuItem>,
+                  <MenuItem id="party2" value={"Seller"}>Seller</MenuItem>,
+                  <MenuItem id="party3" value={"Warehouse1"}>Warehouse1</MenuItem>,
+                  <MenuItem id="party4" value={"Warehouse2"}>Warehouse2</MenuItem>,
+                  <MenuItem id="party5" value={"Supplier"}>Supplier</MenuItem>,
+                  <MenuItem id="party6" value={"TransportCompany1"}>TransportCompany1</MenuItem>,
+                  <MenuItem id="party7" value={"TransportCompany2"}>TransportCompany2</MenuItem>
                 </Select>
               </FormControl>
               <div className={classes.formButtons}>
@@ -157,6 +150,17 @@ function Login(props : RouteComponentProps) {
                   </Button>}
               </div>
             </React.Fragment>
+        </div>
+        <div style={{marginTop: "30%"}}>
+          <div>
+            <label for="avatar">Upload parties.json (tokens):</label>
+          </div>
+          <div>
+            <DablPartiesInput
+              ledgerId={ledgerId}
+              onError={error => alert(error)}
+              onLoad={handlePartiesLoad}/>
+          </div>
         </div>
       </div>
     </Grid>

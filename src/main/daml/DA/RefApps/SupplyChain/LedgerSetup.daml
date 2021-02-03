@@ -1,0 +1,26 @@
+module DA.RefApps.SupplyChain.LedgerSetup where
+
+import DA.RefApps.SupplyChain.Relationship
+import DA.RefApps.SupplyChain.Types
+import DA.RefApps.SupplyChain.Inventory
+
+data SupplyChainParties =
+  SupplyChainParties with
+    buyer : Party
+    seller : Party
+    supplier : Party
+    warehouse1 : Party
+    warehouse2 : Party
+    transportCompany1 : Party
+    transportCompany2 : Party
+  deriving (Eq, Show)
+
+data SetupData = SetupData with
+    buyerRoleCid: ContractId BuyerSellerRelationship
+    product01: OrderedProduct
+    product02: OrderedProduct
+    inventoryW1P1Cid: ContractId InventoryItem
+    inventoryW1P2Cid: ContractId InventoryItem
+    inventoryW2P1Cid: ContractId InventoryItem
+    inventoryW2P2Cid: ContractId InventoryItem
+  deriving (Eq, Show)

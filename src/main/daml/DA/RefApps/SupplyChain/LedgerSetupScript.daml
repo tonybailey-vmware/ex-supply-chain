@@ -10,27 +10,9 @@ import DA.Date
 import DA.RefApps.SupplyChain.Relationship
 import DA.RefApps.SupplyChain.Types
 import DA.RefApps.SupplyChain.Inventory
-
+import DA.RefApps.SupplyChain.LedgerSetup
+import DA.RefApps.SupplyChain.Dabl
 import Daml.Script
-
-data SupplyChainParties =
-  SupplyChainParties with
-    buyer : Party
-    seller : Party
-    supplier : Party
-    warehouse1 : Party
-    warehouse2 : Party
-    transportCompany1 : Party
-    transportCompany2 : Party
-
-data SetupData = SetupData with
-    buyerRoleCid: ContractId BuyerSellerRelationship
-    product01: OrderedProduct
-    product02: OrderedProduct
-    inventoryW1P1Cid: ContractId InventoryItem
-    inventoryW1P2Cid: ContractId InventoryItem
-    inventoryW2P1Cid: ContractId InventoryItem
-    inventoryW2P2Cid: ContractId InventoryItem
 
 -- Setup script to prepare the relationships and inventory
 initialize: Script ()
@@ -99,3 +81,7 @@ initializeWithParties SupplyChainParties{..} = do
   -- passToDate $ date 2019 Jun 3
 
   pure ()
+
+setupMarketWithDablParties : [DablParty] -> Script ()
+setupMarketWithDablParties parties =
+  initializeWithParties $ fromDablParties parties
