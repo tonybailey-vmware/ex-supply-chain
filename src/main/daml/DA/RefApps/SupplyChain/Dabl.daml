@@ -19,23 +19,23 @@ data DablParty = DablParty with
 fromDablParties : [DablParty] -> SupplyChainParties
 fromDablParties dablParties =
   SupplyChainParties with
-    buyer = getParty "Buyer"
-    seller = getParty "Seller"
-    supplier = getParty "Supplier"
-    warehouse1 = getParty "Warehouse1"
-    warehouse2 = getParty "Warehouse2"
-    transportCompany1 = getParty "TransportCompany1"
-    transportCompany2 = getParty "TransportCompany2"
+    buyer = party "Buyer"
+    seller = party "Seller"
+    supplier = party "Supplier"
+    warehouse1 = party "Warehouse1"
+    warehouse2 = party "Warehouse2"
+    transportCompany1 = party "TransportCompany1"
+    transportCompany2 = party "TransportCompany2"
   where
-    getParty name = fromSomeNote ("Party with name " <> name <> " not found.") $ Map.lookup name partyDetails
+    party name = fromSomeNote ("Party with name " <> name <> " not found.") $ Map.lookup name partyDetails
     partyDetails = Map.fromList $ map (\x -> (x.partyName, toParty x.party)) dablParties
     toParty name = fromSomeNote ("Party cannot be created for " <> name) $ partyFromText name
 
-getSandboxParty : Text -> DablParty
-getSandboxParty name = DablParty name name
+dablPartyFromText : Text -> DablParty
+dablPartyFromText name = DablParty name name
 
-fromDablPartiesCanConvert : Script ()
-fromDablPartiesCanConvert = do
+testFromDablPartiesCanConvert : Script ()
+testFromDablPartiesCanConvert = do
   let buyer = "Buyer"
       seller = "Seller"
       supplier = "Supplier"
@@ -53,7 +53,7 @@ fromDablPartiesCanConvert = do
           transportCompany1 = party transportComp1
           transportCompany2 = party transportComp2
       actual =
-        fromDablParties $ getSandboxParty <$>
+        fromDablParties $ map dablPartyFromText
           [ buyer, seller, supplier, warehouse1,
            warehouse2, transportComp1, transportComp2 ]
   expected === actual
