@@ -3,7 +3,7 @@ TRIGGERS_DAR=target/triggers.dar
 JS_CODEGEN_DIR=ui/daml.js
 
 .PHONY: build
-build: build-dars build-ui
+build: build-dars yarn-install-deps
 
 .PHONY: clean
 clean:
@@ -42,5 +42,11 @@ UI_INSTALL_ARTIFACT=ui/node_modules
 $(UI_INSTALL_ARTIFACT): ui/package.json ui/yarn.lock $(JS_CODEGEN_ARTIFACT)
 	cd ui && yarn install --force --frozen-lockfile
 
-.PHONY: build-ui
-build-ui: $(UI_INSTALL_ARTIFACT)
+yarn-install-deps: $(UI_INSTALL_ARTIFACT)
+
+.PHONY: package
+package: yarn-install-deps
+	cd ui && \
+     REACT_APP_HTTP_BASE_URL=https://$(LEDGER_ID).projectdabl.com \
+      REACT_APP_WS_BASE_URL=wss://$(LEDGER_ID).projectdabl.com \
+	   yarn build && mkdir -p ../target && zip -r ../target/supplychain.zip build/

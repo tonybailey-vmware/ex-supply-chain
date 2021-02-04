@@ -1,0 +1,61 @@
+--
+-- Copyright (c) 2019, Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+--
+
+module DA.RefApps.SupplyChain.Dabl where
+
+import qualified DA.TextMap as Map
+import DA.Optional (fromSome, fromSomeNote)
+import Daml.Script (Script)
+import DA.Assert
+import DA.RefApps.SupplyChain.LedgerSetup
+
+data DablParty = DablParty with
+    party : Text
+    partyName : Text
+  deriving (Eq, Show)
+
+fromDablParties : [DablParty] -> SupplyChainParties
+fromDablParties dablParties =
+  SupplyChainParties with
+    buyer = party "Buyer"
+    seller = party "Seller"
+    supplier = party "Supplier"
+    warehouse1 = party "Warehouse1"
+    warehouse2 = party "Warehouse2"
+    transportCompany1 = party "TransportCompany1"
+    transportCompany2 = party "TransportCompany2"
+  where
+    party name = fromSomeNote ("Party with name " <> name <> " not found.") $ Map.lookup name partyDetails
+    partyDetails = Map.fromList $ map (\x -> (x.partyName, toParty x.party)) dablParties
+    toParty name = fromSomeNote ("Party cannot be created for " <> name) $ partyFromText name
+
+dablPartyFromText : Text -> DablParty
+dablPartyFromText name = DablParty name name
+
+testFromDablPartiesCanConvert : Script ()
+testFromDablPartiesCanConvert = do
+  let buyer = "Buyer"
+      seller = "Seller"
+      supplier = "Supplier"
+      warehouse1 = "Warehouse1"
+      warehouse2 = "Warehouse2"
+      transportComp1 = "TransportCompany1"
+      transportComp2 = "TransportCompany2"
+      expected =
+        SupplyChainParties with
+          buyer = party buyer
+          seller = party seller
+          supplier = party supplier
+          warehouse1 = party warehouse1
+          warehouse2 = party warehouse2
+          transportCompany1 = party transportComp1
+          transportCompany2 = party transportComp2
+      actual =
+        fromDablParties $ map dablPartyFromText
+          [ buyer, seller, supplier, warehouse1,
+           warehouse2, transportComp1, transportComp2 ]
+  expected === actual
+ where
+  party name = fromSome $ partyFromText name
