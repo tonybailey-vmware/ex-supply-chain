@@ -3,10 +3,11 @@ target
 .idea
 *.iml
 .daml
-node_modules
 .classpath
 .project
 .settings/
 .vscode/
 ui/build
 ui/supplychain.zip
+ui/daml.js
+ui/node_modules
