@@ -1,5 +1,5 @@
 MODELS_DAR=target/supplychain.dar
-TRIGGERS_DAR=target/triggers.dar
+TRIGGERS_DAR=target/supplychain-triggers.dar
 JS_CODEGEN_DIR=ui/daml.js
 
 .PHONY: build
@@ -25,6 +25,11 @@ TRIGGERS_DAML_SRC=$(shell find triggers/src/ -name '*.daml')
 
 $(TRIGGERS_DAR): $(TRIGGERS_DAML_SRC) triggers/daml.yaml $(MODELS_DAR)
 	cd triggers && daml build --output ../$@
+
+.PHONY: test-dars
+test-dars: build-dars
+	daml test --junit target/daml-test-reports/model.xml
+	cd triggers && daml test --junit ../target/daml-test-reports/triggers.xml
 
 
 ### JS Codegen ###
