@@ -187,6 +187,9 @@ jobs:
             --detect.timeout=3600
       - run:
           command: cp digitalasset_ex_supply_chain_master_Black_Duck_Notices_Report.txt NOTICE
+      - store_artifacts:
+          name: Store the Blackduck run artifacts
+          path: /home/circleci/blackduck/runs
       - persist_to_workspace:
           root: .
           paths:
