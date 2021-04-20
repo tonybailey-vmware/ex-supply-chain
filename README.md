@@ -32,31 +32,20 @@ Be sure you have the following installed.
     make build
     ```
     **Note:** If you change the DAML models locally, you need to re-run this command before starting the application.
-2. Start the DAML Sandbox and Navigator. Type:
+
+2. Use **separate terminals** to launch the individual components:
+
     ```shell
-    daml start --sandbox-option --address=localhost
+    launchers/sandbox+jsonapi+populate
+    launchers/automation
+    launchers/ui
     ```
-    The navigator will automatically open in new browser tab at http://localhost:7500.
-3. Once the sandbox has started, start the automation logic by starting triggers. Type:
-    ```shell
-    scripts/startTriggers.sh localhost 6865 target/supplychain-triggers.dar
-    ```
-4. Once the sandbox has started, start the automation logic by starting triggers. Type:
-    ```shell
-    cd ui
-    yarn start
-    ```
+
+    The demo will run at http://localhost:3000
 
 ### Stopping the App
 
-1. Stop the triggers by pressing **Ctrl+C**.
-1. Stop the Sandbox and the Navigator by pressing **Ctrl+C** in the DAML assistant.
-
-### Resetting the Prototype
-
-Reset the application by following these steps:
-1.  Stop the app by following the steps in [Stopping the App](#stopping-the-app) section.
-2.  Start the app by following the steps in [Starting the App](#starting-the-app) section.
+1. Stop the every running command by pressing **Ctrl+C**.
 
 ## Working with DAML Hub
 
@@ -173,7 +162,7 @@ The Supply Chain application includes the following steps:
 
 ### Choosing and Changing Roles
 
-When you launch the Supply Chain application, you will see the Navigator screen with the option to choose your role.
+When you launch the Supply Chain application, you will see the login screen with the option to choose your role.
 
 To log in:
 
@@ -186,7 +175,7 @@ To switch users:
 
 ### Setup
 
-During Navigator startup, the basic buyer-seller relationship and other reference data is set up.
+During startup, the basic buyer-seller relationship and other reference data is set up.
 
 ### Requesting a New Quote
 
