@@ -12,7 +12,6 @@ import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListIcon from "@material-ui/icons/List";
 import useStyles from "./styles";
-import { useParty } from "@daml/react";
 import { useUserState } from "../../context/UserContext";
 
 type SidebarLinkProps = {
