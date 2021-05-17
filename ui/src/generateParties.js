@@ -15,20 +15,20 @@ const participantNames = ["buyer", "seller", "supplier", "warehouse1", "warehous
 //   stream.end();
 // });
 
+const ledgerId = "demo";
+const applicationId = "";
 const participants = {};
 const partyParticipants = {};
-// parties.array.forEach(element => {
-
-// });( party =>
-//     {
-//         const token =
-//             jwt.sign({
-//                 "https://daml.com/ledger-api":
-//                     { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } },
-//                 "secret");
-//         return { token };
-//     }
-// )
+participantNames.forEach( party =>
+    {
+        const token =
+            jwt.sign({
+                "https://daml.com/ledger-api":
+                    { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } },
+                "secret");
+        participants[party] = { host: "localhost", port: "6865", access_token: token };
+    }
+)
 
 
 const result = {
@@ -39,4 +39,4 @@ const result = {
     "party_participants": partyParticipants
 }
 
-process.stdout.write(result);
+console.log(result);
