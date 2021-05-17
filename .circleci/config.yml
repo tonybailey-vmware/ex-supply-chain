@@ -82,6 +82,15 @@ jobs:
       - install_sdk:
           version: << parameters.daml_sdk_version >>
       - run:
+          name: Install flake8
+          command: |
+            sudo apt-get update || sudo apt-get update
+            sudo apt-get install flake8
+      - run:
+          name: Python flake8
+          command: |
+            flake8 --max-line-length=120 $(find -name \*.py)
+      - run:
           name: Integration tests
           command: |
             mvn verify
@@ -140,6 +149,10 @@ jobs:
           name: UI build
           command: |
             make package
+      - run:
+          name: Yarn test
+          command: |
+            cd ui && yarn test -- --watchAll=false
       - save_cache:
           paths:
             - ~/.daml
@@ -198,16 +211,16 @@ workflows:
   test:
     jobs:
       - daml_test:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           context: refapps
       - integration_test:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           context: refapps
       - ui_test:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           context: refapps
       - blackduck_check:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           filters:
             branches:
               only:
@@ -225,16 +238,16 @@ workflows:
                 - main
     jobs:
       - daml_test:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           context: refapps
       - integration_test:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           context: refapps
       - ui_test:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           context: refapps
       - blackduck_check:
-          daml_sdk_version: "1.12.0"
+          daml_sdk_version: "1.13.0"
           context:
             - blackduck
             - refapps
