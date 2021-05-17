@@ -33,11 +33,14 @@ function generate(participantNames) {
             participants[party] = { host: "localhost", port: "6865", access_token: token };
         }
     )
+    participantNames.forEach( party =>
+        {
+            partyParticipants[`ledger-party-${party}`] = party;
+        }
+    )
 
     return {
-        "default_participant": {
-
-        },
+        "default_participant": participants[participantNames[0]] || {},
         "participants": participants,
         "party_participants": partyParticipants
     }

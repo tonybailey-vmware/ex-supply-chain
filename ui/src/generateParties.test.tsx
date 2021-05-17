@@ -9,7 +9,11 @@ it('renders without crashing', () => {
   const actual = generate(["Apple"]);
   const expected =
      {
-       "default_participant": {},
+       "default_participant": {
+         "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwczovL2RhbWwuY29tL2xlZGdlci1hcGkiOnsibGVkZ2VySWQiOiJkZW1vIiwiYXBwbGljYXRpb25JZCI6IiIsImFkbWluIjp0cnVlLCJhY3RBcyI6WyJBcHBsZSJdLCJyZWFkQXMiOlsiQXBwbGUiXX19.mkKJb0yr8thyMt689f-JH5nMtV20GqHy9pyR-Ky6NNw",
+         "host": "localhost",
+         "port": "6865",
+        },
        "participants": {
          "Apple": {
            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwczovL2RhbWwuY29tL2xlZGdlci1hcGkiOnsibGVkZ2VySWQiOiJkZW1vIiwiYXBwbGljYXRpb25JZCI6IiIsImFkbWluIjp0cnVlLCJhY3RBcyI6WyJBcHBsZSJdLCJyZWFkQXMiOlsiQXBwbGUiXX19.mkKJb0yr8thyMt689f-JH5nMtV20GqHy9pyR-Ky6NNw",
@@ -17,7 +21,9 @@ it('renders without crashing', () => {
            "port": "6865",
          },
        },
-       "party_participants": {},
+       "party_participants": {
+        "ledger-party-Apple": "Apple"
+       },
      };
   expect(actual).toStrictEqual(expected)
 });
