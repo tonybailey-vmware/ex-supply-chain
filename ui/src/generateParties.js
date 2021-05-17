@@ -15,28 +15,32 @@ const participantNames = ["buyer", "seller", "supplier", "warehouse1", "warehous
 //   stream.end();
 // });
 
-const ledgerId = "demo";
-const applicationId = "";
-const participants = {};
-const partyParticipants = {};
-participantNames.forEach( party =>
-    {
-        const token =
-            jwt.sign({
-                "https://daml.com/ledger-api":
-                    { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } },
-                "secret");
-        participants[party] = { host: "localhost", port: "6865", access_token: token };
+
+
+function generate(participantNames) {
+    const ledgerId = "demo";
+    const applicationId = "";
+    const participants = {};
+    const partyParticipants = {};
+    participantNames.forEach( party =>
+        {
+            const token =
+                jwt.sign({
+                    "https://daml.com/ledger-api":
+                        { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } },
+                    "secret");
+            participants[party] = { host: "localhost", port: "6865", access_token: token };
+        }
+    )
+
+    return {
+        "default_participant": {
+
+        },
+        "participants": participants,
+        "party_participants": partyParticipants
     }
-)
-
-
-const result = {
-    "default_participant": {
-
-    },
-    "participants": participants,
-    "party_participants": partyParticipants
 }
+exports.generate = generate
 
-console.log(result);
+console.log(generate(participantNames));
