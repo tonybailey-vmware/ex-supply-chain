@@ -30,7 +30,7 @@ function generate(participantNames) {
                         { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } },
                     "secret",
                     { noTimestamp: true });
-            participants[party] = { host: "localhost", port: "6865", access_token: token };
+            participants[party] = { host: "localhost", port: 6865, access_token: token };
         }
     )
     participantNames.forEach( party =>
@@ -47,4 +47,4 @@ function generate(participantNames) {
 }
 exports.generate = generate
 
-console.log(generate(participantNames));
+console.log(JSON.stringify(generate(participantNames)));
