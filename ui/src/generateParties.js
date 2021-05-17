@@ -28,7 +28,8 @@ function generate(participantNames) {
                 jwt.sign({
                     "https://daml.com/ledger-api":
                         { ledgerId, applicationId, admin: true, actAs: [party], readAs: [party] } },
-                    "secret");
+                    "secret",
+                    { noTimestamp: true });
             participants[party] = { host: "localhost", port: "6865", access_token: token };
         }
     )
