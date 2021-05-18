@@ -47,4 +47,4 @@ function generate(participantNames) {
 }
 exports.generate = generate
 
-console.log(JSON.stringify(generate(participantNames)));
+console.log(JSON.stringify(generate(participantNames), null, 2));
