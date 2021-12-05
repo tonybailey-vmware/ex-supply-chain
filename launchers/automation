@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-PORT=${1:-6865}
+HOST=${1:-localhost}
+PORT=${2:-6865}
 
 export PIPENV_PIPFILE=scripts/Pipfile
-exec pipenv run scripts/startTriggers.py "$PORT"
+exec pipenv run scripts/startTriggers.py "$HOST" "$PORT"

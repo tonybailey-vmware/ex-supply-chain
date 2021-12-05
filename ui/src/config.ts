@@ -18,7 +18,7 @@ let host = window.location.host.split('.')
 let loginUrl = host.slice(1)
 loginUrl.unshift('login')
 export const isDevMode = process.env.NODE_ENV === 'development'
-export const ledgerId = isDevMode ? "supply-chain" : host[0];
+export const ledgerId = isDevMode ? "KVBC" : host[0];
 export const dablLoginUrl = loginUrl.join('.') + (window.location.port ? ':' + window.location.port : '') + '/auth/login?ledgerId=' + ledgerId;
 
 export function createToken(party: string): string {
