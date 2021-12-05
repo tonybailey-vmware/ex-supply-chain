@@ -23,18 +23,19 @@ triggers_with_parties = [
 ]
 
 parser = argparse.ArgumentParser()
+parser.add_argument('ledger_host')
 parser.add_argument('ledger_port')
 args = parser.parse_args()
 
 logging.basicConfig(level=logging.DEBUG)
 
-wait_for_port(port=args.ledger_port, timeout=30)
+wait_for_port(host=args.ledger_host, port=args.ledger_port, timeout=30)
 
-service = start_trigger_service_in_background(dar=dar, ledger_port=args.ledger_port)
+service = start_trigger_service_in_background(dar=dar, ledger_host=args.ledger_host, ledger_port=args.ledger_port)
 try:
     catch_signals()
     package_id = get_package_id(dar)
-    wait_for_port(port=DEFAULT_TRIGGER_SERVICE_PORT, timeout=30)
+    wait_for_port(host='localhost', port='8088', timeout=30)
     for party, triggerName in triggers_with_parties:
         add_trigger_to_service(party=party, package_id=package_id, trigger=triggerName)
 
